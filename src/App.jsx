@@ -61,28 +61,28 @@ function App() {
       id: 1,
       name: "গুগল সার্চ ইঞ্জিনিয়ারিং",
       description: "অন্যের কোড কপি করে নিজের নামে চালিয়ে দেওয়ার এক অনন্য নিদর্শন।",
-      image: "/1.png",
+      image: "./1.png",
       tag: "কপি-পেস্ট ইঞ্জিনিয়ারিং"
     },
     {
       id: 2,
       name: "সেমিকোলন খোঁজার যুদ্ধ",
       description: "সারা রাত জেগে একটা মিসিং সেমিকোলন খুঁজে বের করার পর যে আনন্দ হয়, তা অমূল্য।",
-      image: "/2.png",
+      image: "./2.png",
       tag: "অসীম ধৈর্য"
     },
     {
       id: 3,
       name: "বাগ নাকি ফিচার?",
       description: "ক্লায়েন্টকে বুঝানো যে এই গ্লিচটা আসলে একটা 'আর্টিস্টিক চয়েস' ছিল।",
-      image: "/3.png",
+      image: "./3.png",
       tag: "মার্কেটিং স্ট্র্যাটেজি"
     },
     {
       id: 4,
       name: "সার্চিং অলিম্পিক",
       description: "সঠিক কি-ওয়ার্ড দিয়ে স্ট্যাক ওভারফ্লো থেকে সমাধান বের করার এক মহাকাব্য।",
-      image: "/4.png",
+      image: "./4.png",
       tag: "গুগল স্পেশালিস্ট"
     }
   ];
@@ -238,7 +238,7 @@ function App() {
           </div>
         </div>
         <div className="relative animate-float mt-10 md:mt-0 flex justify-end reveal reveal-right">
-          <img src="/hero-image.png" alt="Hero representation" className="w-full max-w-[600px] aspect-square object-cover rounded-[2.5rem] shadow-[0_0_50px_rgba(220,143,255,0.15)] border border-primary/20" />
+          <img src="./hero-image.png" alt="Hero representation" className="w-full max-w-[600px] aspect-square object-cover rounded-[2.5rem] shadow-[0_0_50px_rgba(220,143,255,0.15)] border border-primary/20" />
         </div>
       </header>
 
