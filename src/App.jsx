@@ -1,10 +1,19 @@
 import { useState, useEffect } from 'react';
+import Dragon from './Dragon';
+import Flower from './Flower';
+import Butterflies from './Butterflies';
+import ParticleText from './ParticleText';
+import AuthModal from './AuthModal';
 
 function App() {
   const [showAllVictims, setShowAllVictims] = useState(false);
   const [copyCount, setCopyCount] = useState(45679);
   const [isShaking, setIsShaking] = useState(false);
   const [agreedToBugs, setAgreedToBugs] = useState(false);
+  const [dragonOpacity, setDragonOpacity] = useState(0.2);
+  const [dragonSize, setDragonSize] = useState(0.6);
+  const [showDragonSettings, setShowDragonSettings] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   // Fake Counter Effect
   useEffect(() => {
@@ -14,26 +23,7 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Mouse Trail Effect
-  useEffect(() => {
-    let timeout;
-    const handleMouseMove = (e) => {
-      if (Math.random() > 0.9) {
-        const particle = document.createElement('div');
-        particle.className = 'particle fixed font-mono text-xs font-bold text-primary/70 z-50 pointer-events-none drop-shadow-[0_0_8px_rgba(220,143,255,0.8)]';
-        particle.style.left = `${e.clientX}px`;
-        particle.style.top = `${e.clientY}px`;
-        particle.innerText = Math.random() > 0.5 ? 'Ctrl+C' : 'Ctrl+V';
-        document.body.appendChild(particle);
-        
-        setTimeout(() => {
-          particle.remove();
-        }, 1000);
-      }
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+
 
   // Scroll Reveal Observer
   useEffect(() => {
@@ -44,7 +34,7 @@ function App() {
         }
       });
     }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
-    
+
     const timeout = setTimeout(() => {
       const hiddenElements = document.querySelectorAll('.reveal');
       hiddenElements.forEach((el) => observer.observe(el));
@@ -175,7 +165,8 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-surface-dim text-on-surface font-sans selection:bg-primary selection:text-black overflow-x-hidden">
+    <div className="min-h-screen bg-surface-dim text-on-surface font-sans selection:bg-primary selection:text-black overflow-x-hidden relative z-[1]">
+      <Dragon opacity={dragonOpacity} size={dragonSize} />
       {/* Navbar & Marquee */}
       <nav className="fixed top-0 w-full glass-panel z-50 border-b border-outline-variant/10">
         {/* Marquee Ticker */}
@@ -190,12 +181,82 @@ function App() {
 
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="text-[24px] font-bold sunset-text tracking-wider cursor-pointer py-1 leading-normal" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>জোড়াতালি ইঞ্জিনিয়ারিং</div>
-          
-          <div className="hidden md:flex items-center gap-10 text-[15px] font-medium tracking-wide">
+
+          <div className="hidden md:flex items-center gap-8 text-[15px] font-medium tracking-wide">
             <a href="#projects" className="sunset-text pb-[6px] border-b-[2.5px] border-[#ff7a00]">কীর্তিকলাপ</a>
             <a href="#process" className="text-on-surface-variant hover:text-white transition-colors">গুগল করার পদ্ধতি</a>
             <a href="#victims" className="text-on-surface-variant hover:text-white transition-colors">ভিক্টিমদের তালিকা</a>
             <a href="#contact" className="text-on-surface-variant hover:text-white transition-colors">নক দিন</a>
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="text-on-surface-variant hover:text-white transition-colors cursor-pointer"
+            >
+              লগইন / সাইন-আপ
+            </button>
+
+            {/* Dragon Settings Button */}
+            <div className="relative">
+              <button
+                id="dragon-settings-btn"
+                onClick={() => setShowDragonSettings(!showDragonSettings)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-xs font-bold tracking-widest ${showDragonSettings
+                    ? 'border-primary/60 text-primary bg-primary/10'
+                    : 'border-outline-variant/30 text-on-surface-variant hover:border-primary/40 hover:text-primary'
+                  }`}
+                title="Dragon Controls"
+              >
+                🐉 <span>⚙</span>
+              </button>
+
+              {showDragonSettings && (
+                <div className="absolute top-10 right-0 glass-panel rounded-2xl p-5 w-60 border border-primary/20 shadow-[0_8px_32px_rgba(220,143,255,0.15)] z-[100]">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-lg">🐉</span>
+                    <span className="text-sm font-bold text-primary tracking-widest uppercase">Dragon Controls</span>
+                  </div>
+
+                  {/* Opacity Slider */}
+                  <div className="mb-5">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-on-surface-variant font-medium">Opacity</span>
+                      <span className="text-xs font-bold text-primary font-mono">{Math.round(dragonOpacity * 100)}%</span>
+                    </div>
+                    <input
+                      id="dragon-opacity-slider"
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={Math.round(dragonOpacity * 100)}
+                      onChange={(e) => setDragonOpacity(Number(e.target.value) / 100)}
+                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[#dc8fff]"
+                    />
+                    <div className="flex justify-between text-[10px] text-outline-variant mt-1">
+                      <span>0%</span><span>100%</span>
+                    </div>
+                  </div>
+
+                  {/* Size Slider */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs text-on-surface-variant font-medium">Size</span>
+                      <span className="text-xs font-bold text-primary font-mono">{Math.round(dragonSize * 100)}%</span>
+                    </div>
+                    <input
+                      id="dragon-size-slider"
+                      type="range"
+                      min="30"
+                      max="200"
+                      value={Math.round(dragonSize * 100)}
+                      onChange={(e) => setDragonSize(Number(e.target.value) / 100)}
+                      className="w-full h-1.5 rounded-full appearance-none cursor-pointer accent-[#dc8fff]"
+                    />
+                    <div className="flex justify-between text-[10px] text-outline-variant mt-1">
+                      <span>30%</span><span>200%</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <a href="#contact" className="px-7 py-3 rounded-full sunset-gradient text-black font-bold hover:scale-105 transition shadow-[0_0_15px_rgba(220,143,255,0.2)] block text-center">
@@ -219,7 +280,7 @@ function App() {
           <p className="text-xl text-on-surface-variant max-w-md leading-relaxed pt-2">
             আমি ওয়েবসাইট বানাই না, বরং গুগল থেকে অন্যের বানানো কোড কপি করে জোড়াতালি দেই। আর দিনের বেলা মার্কেটিং ম্যানেজার সেজে ঘুরি।
           </p>
-          
+
           <div className="inline-flex items-center gap-4 bg-[#1a0f2e] border border-primary/20 px-6 py-4 rounded-xl mt-4 w-fit shadow-[0_4px_20px_rgba(0,0,0,0.3)] hover:border-primary/50 transition-colors">
             <div className="text-3xl">💻</div>
             <div>
@@ -286,8 +347,8 @@ function App() {
                 <span className="sunset-text font-mono font-black text-xl">{skill.percent}%</span>
               </div>
               <div className="w-full bg-[#1c1624] h-4 rounded-full overflow-hidden border border-[#2d243a] p-0.5">
-                <div 
-                  className="h-full sunset-gradient rounded-full relative group-hover:opacity-90 transition-opacity" 
+                <div
+                  className="h-full sunset-gradient rounded-full relative group-hover:opacity-90 transition-opacity"
                   style={{ width: `${skill.percent}%` }}
                 >
                   <div className="absolute top-0 right-0 bottom-0 w-10 bg-white/30 blur-[5px]"></div>
@@ -302,7 +363,7 @@ function App() {
       <section id="projects" className="py-20 px-6 bg-surface-container-low border-y border-outline-variant/10">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-5xl font-black mb-12 text-center reveal reveal-down">আমার যত <span className="sunset-text">কীর্তিকলাপ</span></h2>
-          
+
           <div className="grid md:grid-cols-2 gap-8">
             {projects.map((project, index) => (
               <div key={project.id} className={`glass-panel rounded-2xl overflow-hidden group hover:border-primary/40 transition reveal ${index % 2 === 0 ? 'reveal-left' : 'reveal-right'}`}>
@@ -328,7 +389,7 @@ function App() {
             ভিক্টিমদের আর্তনাদ
           </h2>
         </div>
-        
+
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {victims.slice(0, showAllVictims ? victims.length : 3).map((victim) => (
             <div key={victim.id} className="bg-[#1c1624] border border-[#2d243a] p-8 rounded-[1rem] flex flex-col justify-between hover:-translate-y-2 transition-transform duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.2)] reveal reveal-scale">
@@ -336,7 +397,7 @@ function App() {
                 <div className="flex gap-[2px] text-[#ffb800] mb-6">
                   {/* 5 Stars SVG */}
                   {[...Array(5)].map((_, i) => (
-                    <svg key={i} className="w-[16px] h-[16px] fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    <svg key={i} className="w-[16px] h-[16px] fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" /></svg>
                   ))}
                 </div>
                 <p className="text-[#dcd6e5] text-[15px] leading-[1.8] font-medium mb-12">
@@ -353,10 +414,10 @@ function App() {
             </div>
           ))}
         </div>
-        
+
         {victims.length > 3 && (
           <div className="text-center mt-12">
-            <button 
+            <button
               onClick={() => setShowAllVictims(!showAllVictims)}
               className="px-8 py-3 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container transition-colors font-bold text-sm"
             >
@@ -366,13 +427,17 @@ function App() {
         )}
       </section>
 
+      <ParticleText />
+
+      <Butterflies />
+
       {/* Contact Section */}
       <section id="contact" className="py-24 px-6 bg-surface-container relative overflow-hidden border-t border-outline-variant/10">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-2xl h-1 bg-gradient-to-r from-transparent via-primary to-transparent"></div>
         <div className="max-w-xl mx-auto text-center z-10 relative reveal reveal-up">
           <h2 className="text-4xl md:text-5xl font-black mb-6">চলুন একসাথে কিছু একটা <span className="sunset-text">জোড়াতালি দেই</span></h2>
           <p className="text-on-surface-variant mb-10">কি করতে হবে? (গুগল করে সমাধানযোগ্য হলে ভালো)</p>
-          
+
           <form className="space-y-4 text-left" onSubmit={(e) => e.preventDefault()}>
             <div>
               <input type="text" placeholder="Your Name (Victim ID)" className="w-full glass-panel px-6 py-4 rounded-xl focus:border-primary outline-none transition" />
@@ -380,11 +445,11 @@ function App() {
             <div>
               <textarea rows="4" placeholder="আপনার আইডিয়া বলুন, আমি গুগল করে দেখছি..." className="w-full glass-panel px-6 py-4 rounded-xl focus:border-primary outline-none transition"></textarea>
             </div>
-            
+
             <div className="flex items-start gap-4 mt-6 mb-4 bg-[#1a0f2e]/50 p-4 rounded-xl border border-primary/20">
-              <input 
-                type="checkbox" 
-                id="bug-agreement" 
+              <input
+                type="checkbox"
+                id="bug-agreement"
                 checked={agreedToBugs}
                 onChange={(e) => setAgreedToBugs(e.target.checked)}
                 className="mt-1 w-5 h-5 accent-[#ff7a00] cursor-pointer shrink-0"
@@ -394,7 +459,7 @@ function App() {
               </label>
             </div>
 
-            <button 
+            <button
               disabled={!agreedToBugs}
               className={`w-full font-bold py-4 rounded-xl transition-all shadow-lg ${!agreedToBugs ? 'bg-surface-variant text-on-surface-variant/50 cursor-not-allowed border border-outline-variant/30' : 'sunset-gradient text-black hover:opacity-90 hover:scale-[1.02]'}`}
             >
@@ -408,7 +473,7 @@ function App() {
       </section>
 
       <div className="py-16 flex justify-center">
-        <button 
+        <button
           onClick={() => {
             setIsShaking(true);
             setTimeout(() => {
@@ -421,7 +486,10 @@ function App() {
           ভুল করেও এখানে ক্লিক করবেন না!
         </button>
       </div>
-      
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <Flower />
+
       <footer className="text-center py-10 px-6 border-t border-outline-variant/10 bg-surface-dim">
         <div className="max-w-7xl mx-auto flex flex-col items-center gap-6">
           <div className="flex gap-6 text-sm font-bold tracking-wider text-on-surface-variant">

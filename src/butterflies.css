@@ -1,0 +1,63 @@
+/* Butterflies Section Styles */
+.butterflies-section {
+  position: relative;
+  overflow: hidden;
+  background-color: #100c1a;
+  min-height: 550px;
+}
+
+#butterflies-app {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+#butterflies-app canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+.butterflies-content {
+  position: relative;
+  z-index: 10;
+  pointer-events: none; /* Let mouse interaction pass through to canvas */
+}
+
+/* Re-enable pointer events for interactive text and controls */
+.butterflies-content h2,
+.butterflies-content p,
+.butterflies-content a,
+.butterflies-content button {
+  pointer-events: auto;
+}
+
+/* Smooth top and bottom gradient fades to blend with background */
+.butterflies-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 25%;
+  background: linear-gradient(to bottom, #100c1a 0%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.butterflies-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 25%;
+  background: linear-gradient(to top, #100c1a 0%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+}

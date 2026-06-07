@@ -1,0 +1,151 @@
+/* Particle-to-Text Section Styles */
+.particle-text-section {
+  position: relative;
+  overflow: hidden;
+  background-color: #100c1a;
+  min-height: 650px;
+}
+
+.particle-text-canvas-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none; /* Allows natural scrolling over the canvas */
+}
+
+.particle-text-canvas-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+.particle-text-content {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 650px;
+  padding: 120px 1.5rem 3rem 1.5rem; /* 120px top padding to clear the fixed navbar */
+  pointer-events: none; /* Let scroll events pass through to body */
+}
+
+.particle-text-content h2,
+.particle-text-content p,
+.particle-text-content form,
+.particle-text-content input,
+.particle-text-content button {
+  pointer-events: auto; /* Keep interactive items clickable */
+}
+
+/* Glassmorphic Input wrapper */
+.particle-text-input-container {
+  width: 100%;
+  max-width: 500px;
+  margin-top: 1.5rem;
+}
+
+.particle-text-input-wrapper {
+  background: rgba(28, 22, 36, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(220, 143, 255, 0.15);
+  border-radius: 18px;
+  padding: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: all 0.3s ease;
+}
+
+.particle-text-input-wrapper:focus-within {
+  border-color: rgba(220, 143, 255, 0.4);
+  box-shadow: 0 8px 32px rgba(220, 143, 255, 0.1);
+}
+
+.particle-text-input-wrapper input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 0.8rem 1.2rem;
+  color: white;
+  font-size: 1rem;
+  font-weight: 500;
+  outline: none;
+}
+
+.particle-text-input-wrapper input::placeholder {
+  color: rgba(175, 168, 188, 0.6);
+}
+
+.particle-text-input-wrapper button {
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  color: white;
+  border-radius: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+}
+
+.particle-text-input-wrapper button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.5);
+}
+
+.particle-text-input-wrapper button:active {
+  transform: translateY(1px);
+}
+
+.particle-text-input-wrapper button svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.3s ease;
+}
+
+.particle-text-input-wrapper button:hover svg {
+  transform: translateX(3px);
+}
+
+/* Gradient edge blends */
+.particle-text-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 20%;
+  background: linear-gradient(to bottom, #100c1a 0%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.particle-text-section::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 20%;
+  background: linear-gradient(to top, #100c1a 0%, transparent 100%);
+  z-index: 2;
+  pointer-events: none;
+}
+
+@media (max-width: 640px) {
+  .particle-text-input-wrapper button span {
+    display: none;
+  }
+  .particle-text-input-wrapper button {
+    padding: 0.75rem;
+  }
+}
