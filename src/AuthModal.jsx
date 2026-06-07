@@ -136,6 +136,11 @@ function AuthModal({ isOpen, onClose }) {
                 </div>
               </div>
             )}
+
+            <div className="mobile-switch-text">
+              <span>অলরেডি ধরা খেয়েছেন? </span>
+              <button type="button" onClick={() => setIsRightActive(false)}>লগইন করুন</button>
+            </div>
           </form>
         </div>
 
@@ -174,6 +179,11 @@ function AuthModal({ isOpen, onClose }) {
               পাসওয়ার্ড ভুলে গেছেন?
             </a>
             <button type="submit">প্রবেশ করুন</button>
+
+            <div className="mobile-switch-text">
+              <span>নতুন ভিক্টিম? </span>
+              <button type="button" onClick={() => setIsRightActive(true)}>সাইন-আপ করুন</button>
+            </div>
           </form>
         </div>
 
