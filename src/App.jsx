@@ -14,6 +14,7 @@ function App() {
   const [dragonSize, setDragonSize] = useState(0.6);
   const [showDragonSettings, setShowDragonSettings] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Fake Counter Effect
   useEffect(() => {
@@ -259,10 +260,122 @@ function App() {
             </div>
           </div>
 
-          <a href="#contact" className="px-7 py-3 rounded-full sunset-gradient text-black font-bold hover:scale-105 transition shadow-[0_0_15px_rgba(220,143,255,0.2)] block text-center">
-            সাহস থাকলে ডাকুন
-          </a>
+          <div className="flex items-center gap-4">
+            <a href="#contact" className="hidden md:block px-7 py-3 rounded-full sunset-gradient text-black font-bold hover:scale-105 transition shadow-[0_0_15px_rgba(220,143,255,0.2)] text-center">
+              সাহস থাকলে ডাকুন
+            </a>
+
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden flex flex-col justify-center items-center w-10 h-10 rounded-lg border border-outline-variant/30 text-on-surface-variant hover:border-primary/40 hover:text-primary transition-all cursor-pointer z-50"
+              aria-label="Toggle mobile menu"
+            >
+              {isMobileMenuOpen ? (
+                // Close Icon (X)
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                // Hamburger Menu Icon
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Menu Drawer */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden glass-panel border-t border-outline-variant/10 px-6 py-6 space-y-4 flex flex-col animate-slide-down">
+            <a
+              href="#projects"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="sunset-text text-[16px] font-bold pb-1 w-fit border-b border-[#ff7a00]"
+            >
+              কীর্তিকলাপ
+            </a>
+            <a
+              href="#process"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-on-surface-variant hover:text-white transition-colors text-[16px] font-medium"
+            >
+              গুগল করার পদ্ধতি
+            </a>
+            <a
+              href="#victims"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-on-surface-variant hover:text-white transition-colors text-[16px] font-medium"
+            >
+              ভিক্টিমদের তালিকা
+            </a>
+            <a
+              href="#contact"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="text-on-surface-variant hover:text-white transition-colors text-[16px] font-medium"
+            >
+              নক দিন
+            </a>
+            <button
+              onClick={() => {
+                setIsMobileMenuOpen(false);
+                setIsAuthModalOpen(true);
+              }}
+              className="text-left text-on-surface-variant hover:text-white transition-colors text-[16px] font-medium cursor-pointer"
+            >
+              লগইন / সাইন-আপ
+            </button>
+            <a
+              href="#contact"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="w-full py-3 rounded-full sunset-gradient text-black font-bold text-center block"
+            >
+              সাহস থাকলে ডাকুন
+            </a>
+
+            {/* Mobile Dragon Controls */}
+            <div className="border-t border-outline-variant/10 pt-4 mt-2">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-base">🐉</span>
+                <span className="text-xs font-bold text-primary tracking-widest uppercase">Dragon Controls</span>
+              </div>
+              <div className="space-y-4">
+                {/* Opacity Slider */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[11px] text-on-surface-variant font-medium">Opacity</span>
+                    <span className="text-[11px] font-bold text-primary font-mono">{Math.round(dragonOpacity * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={Math.round(dragonOpacity * 100)}
+                    onChange={(e) => setDragonOpacity(Number(e.target.value) / 100)}
+                    className="w-full h-1 rounded-full appearance-none cursor-pointer accent-[#dc8fff] bg-outline-variant/20"
+                  />
+                </div>
+
+                {/* Size Slider */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[11px] text-on-surface-variant font-medium">Size</span>
+                    <span className="text-[11px] font-bold text-primary font-mono">{Math.round(dragonSize * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="30"
+                    max="200"
+                    value={Math.round(dragonSize * 100)}
+                    onChange={(e) => setDragonSize(Number(e.target.value) / 100)}
+                    className="w-full h-1 rounded-full appearance-none cursor-pointer accent-[#dc8fff] bg-outline-variant/20"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
