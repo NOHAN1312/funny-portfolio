@@ -31,11 +31,7 @@ export default function Flower() {
         {/* Flower 1 */}
         <div className="flower flower--1">
           <div className="flower__leafs flower__leafs--1">
-            <div className="flower__leaf flower__leaf--1" />
-            <div className="flower__leaf flower__leaf--2" />
-            <div className="flower__leaf flower__leaf--3" />
-            <div className="flower__leaf flower__leaf--4" />
-            <div className="flower__white-circle" />
+            <div className="emoji-flower">😂</div>
             <div className="flower__light flower__light--1" />
             <div className="flower__light flower__light--2" />
             <div className="flower__light flower__light--3" />
@@ -58,11 +54,7 @@ export default function Flower() {
         {/* Flower 2 */}
         <div className="flower flower--2">
           <div className="flower__leafs flower__leafs--2">
-            <div className="flower__leaf flower__leaf--1" />
-            <div className="flower__leaf flower__leaf--2" />
-            <div className="flower__leaf flower__leaf--3" />
-            <div className="flower__leaf flower__leaf--4" />
-            <div className="flower__white-circle" />
+            <div className="emoji-flower">🤣</div>
             <div className="flower__light flower__light--1" />
             <div className="flower__light flower__light--2" />
             <div className="flower__light flower__light--3" />
@@ -83,11 +75,7 @@ export default function Flower() {
         {/* Flower 3 */}
         <div className="flower flower--3">
           <div className="flower__leafs flower__leafs--3">
-            <div className="flower__leaf flower__leaf--1" />
-            <div className="flower__leaf flower__leaf--2" />
-            <div className="flower__leaf flower__leaf--3" />
-            <div className="flower__leaf flower__leaf--4" />
-            <div className="flower__white-circle" />
+            <div className="emoji-flower">🤪</div>
             <div className="flower__light flower__light--1" />
             <div className="flower__light flower__light--2" />
             <div className="flower__light flower__light--3" />
