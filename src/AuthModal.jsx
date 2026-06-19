@@ -245,6 +245,14 @@ function VerificationScreen({ onClose }) {
     });
   };
 
+  const handleBoxLeave = (index) => {
+    setBoxPositions(prev => {
+      const next = [...prev];
+      next[index] = { x: 0, y: 0 };
+      return next;
+    });
+  };
+
   const handleInputChange = (index, value) => {
     const char = value.slice(-1);
     if (char && !/^\d$/.test(char)) return;
@@ -308,6 +316,11 @@ function VerificationScreen({ onClose }) {
       if (newY < -limitY) newY = limitY;
 
       setBtnPos({ x: newX, y: newY });
+    } else {
+      // If mouse moves away, return button to center
+      if (btnPos.x !== 0 || btnPos.y !== 0) {
+        setBtnPos({ x: 0, y: 0 });
+      }
     }
   };
 
@@ -385,7 +398,9 @@ function VerificationScreen({ onClose }) {
                 position: boxPositions[idx].x !== 0 || boxPositions[idx].y !== 0 ? 'relative' : 'static'
               }}
               onMouseEnter={() => handleBoxHover(idx)}
+              onMouseLeave={() => handleBoxLeave(idx)}
               onFocus={() => handleBoxHover(idx)}
+              onBlur={() => handleBoxLeave(idx)}
               onTouchStart={() => handleBoxHover(idx)}
               onChange={(e) => handleInputChange(idx, e.target.value)}
               onPaste={handlePaste}
