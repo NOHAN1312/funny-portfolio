@@ -182,7 +182,7 @@ function AuthModal({ isOpen, onClose }) {
                   <input type="password" placeholder="গোপন পাসওয়ার্ড (Password)" required />
                 </div>
                 <a href="#" className="forgot-password" onClick={(e) => { e.preventDefault(); alert('কপাল ভালো থাকলে মনে পড়বে, গুগলে তো রিকভারি নাই! 😆'); }}>
-                  پাসওয়ার্ড ভুলে গেছেন?
+                  পাসওয়ার্ড ভুলে গেছেন?
                 </a>
                 <button type="submit">প্রবেশ করুন</button>
 
