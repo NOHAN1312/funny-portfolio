@@ -387,24 +387,27 @@ function VerificationScreen({ onClose }) {
       <form onSubmit={handleVerifySubmit} style={{ background: 'none', padding: 0, height: 'auto', display: 'block' }}>
         <div className="verification-boxes">
           {codeValues.map((val, idx) => (
-            <input
+            <div
               key={idx}
-              type="text"
-              maxLength={1}
-              value={val}
-              className="verification-input"
-              style={{
-                transform: `translate(${boxPositions[idx].x}px, ${boxPositions[idx].y}px)`,
-                position: boxPositions[idx].x !== 0 || boxPositions[idx].y !== 0 ? 'relative' : 'static'
-              }}
+              className="verification-box-wrapper"
               onMouseEnter={() => handleBoxHover(idx)}
               onMouseLeave={() => handleBoxLeave(idx)}
-              onFocus={() => handleBoxHover(idx)}
-              onBlur={() => handleBoxLeave(idx)}
-              onTouchStart={() => handleBoxHover(idx)}
-              onChange={(e) => handleInputChange(idx, e.target.value)}
-              onPaste={handlePaste}
-            />
+            >
+              <input
+                type="text"
+                maxLength={1}
+                value={val}
+                className="verification-input"
+                style={{
+                  transform: `translate(${boxPositions[idx].x}px, ${boxPositions[idx].y}px)`
+                }}
+                onFocus={() => handleBoxHover(idx)}
+                onBlur={() => handleBoxLeave(idx)}
+                onTouchStart={() => handleBoxHover(idx)}
+                onChange={(e) => handleInputChange(idx, e.target.value)}
+                onPaste={handlePaste}
+              />
+            </div>
           ))}
         </div>
 
