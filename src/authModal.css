@@ -402,7 +402,7 @@
   }
 
   .auth-modal-card-container form {
-    padding: 0 30px;
+    padding: 50px 30px 20px;
   }
 
   .mobile-switch-text {
@@ -423,6 +423,14 @@
     padding: 0;
     margin-left: 5px;
     font-family: inherit;
+    box-shadow: none;
+    width: auto;
+  }
+
+  .auth-modal-card-container button:not(.ghost):not(.auth-modal-close) {
+    padding: 12px 20px;
+    width: 100%;
+    max-width: 280px;
   }
 }
 

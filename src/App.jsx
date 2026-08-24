@@ -52,28 +52,28 @@ function App() {
       id: 1,
       name: "গুগল সার্চ ইঞ্জিনিয়ারিং",
       description: "অন্যের কোড কপি করে নিজের নামে চালিয়ে দেওয়ার এক অনন্য নিদর্শন।",
-      image: "./1.png",
+      image: "./1.jpg",
       tag: "কপি-পেস্ট ইঞ্জিনিয়ারিং"
     },
     {
       id: 2,
       name: "সেমিকোলন খোঁজার যুদ্ধ",
       description: "সারা রাত জেগে একটা মিসিং সেমিকোলন খুঁজে বের করার পর যে আনন্দ হয়, তা অমূল্য।",
-      image: "./2.png",
+      image: "./2.jpg",
       tag: "অসীম ধৈর্য"
     },
     {
       id: 3,
       name: "বাগ নাকি ফিচার?",
       description: "ক্লায়েন্টকে বুঝানো যে এই গ্লিচটা আসলে একটা 'আর্টিস্টিক চয়েস' ছিল।",
-      image: "./3.png",
+      image: "./3.jpg",
       tag: "মার্কেটিং স্ট্র্যাটেজি"
     },
     {
       id: 4,
       name: "সার্চিং অলিম্পিক",
       description: "সঠিক কি-ওয়ার্ড দিয়ে স্ট্যাক ওভারফ্লো থেকে সমাধান বের করার এক মহাকাব্য।",
-      image: "./4.png",
+      image: "./4.jpg",
       tag: "গুগল স্পেশালিস্ট"
     }
   ];
@@ -412,7 +412,7 @@ function App() {
           </div>
         </div>
         <div className="relative animate-float mt-10 md:mt-0 flex justify-end reveal reveal-right">
-          <img src="./hero-image.png" alt="Hero representation" className="w-full max-w-[600px] aspect-square object-cover rounded-[2.5rem] shadow-[0_0_50px_rgba(220,143,255,0.15)] border border-primary/20" />
+          <img src="./hero-image.jpg" alt="Hero representation" className="w-full max-w-[600px] aspect-square object-cover rounded-[2.5rem] shadow-[0_0_50px_rgba(220,143,255,0.15)] border border-primary/20" />
         </div>
       </header>
 
@@ -532,7 +532,7 @@ function App() {
           <div className="text-center mt-12">
             <button
               onClick={() => setShowAllVictims(!showAllVictims)}
-              className="px-8 py-3 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container transition-colors font-bold text-sm"
+              className="px-6 md:px-8 py-3 rounded-full border border-outline-variant text-on-surface hover:bg-surface-container transition-colors font-bold text-xs md:text-sm"
             >
               {showAllVictims ? 'কম ভিক্টিম দেখুন' : 'আরও ভিক্টিম দেখুন'}
             </button>
@@ -574,7 +574,7 @@ function App() {
 
             <button
               disabled={!agreedToBugs}
-              className={`w-full font-bold py-4 rounded-xl transition-all shadow-lg ${!agreedToBugs ? 'bg-surface-variant text-on-surface-variant/50 cursor-not-allowed border border-outline-variant/30' : 'sunset-gradient text-black hover:opacity-90 hover:scale-[1.02]'}`}
+              className={`w-full font-bold py-3 md:py-4 rounded-xl transition-all shadow-lg ${!agreedToBugs ? 'bg-surface-variant text-on-surface-variant/50 cursor-not-allowed border border-outline-variant/30' : 'sunset-gradient text-black hover:opacity-90 hover:scale-[1.02]'}`}
             >
               মিশন শুরু করুন
             </button>
@@ -594,7 +594,7 @@ function App() {
               alert("আপনার ডিভাইসটি জোড়াতালি সার্ভারের সাথে কানেক্ট হচ্ছে... সব ডেটা ডিলিট হয়ে যেতে পারে! 🔴 😆");
             }, 500);
           }}
-          className={`bg-red-500/10 text-red-500 border border-red-500/50 hover:bg-red-500 hover:text-white px-8 py-4 rounded-full font-black text-lg tracking-widest transition-colors shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:shadow-[0_0_40px_rgba(239,68,68,0.5)] ${isShaking ? 'animate-shake' : ''}`}
+          className={`bg-red-500/10 text-red-500 border border-red-500/50 hover:bg-red-500 hover:text-white px-4 md:px-8 py-3 md:py-4 rounded-full font-black text-sm md:text-lg tracking-normal md:tracking-widest transition-colors shadow-[0_0_30px_rgba(239,68,68,0.2)] hover:shadow-[0_0_40px_rgba(239,68,68,0.5)] w-[90vw] md:w-auto text-center leading-relaxed md:leading-normal mx-auto ${isShaking ? 'animate-shake' : ''}`}
         >
           ভুল করেও এখানে ক্লিক করবেন না!
         </button>
