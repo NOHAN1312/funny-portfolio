@@ -1,25 +1,15 @@
-/* Custom transitions and styling for Sliding Auth Modal matching the dark portfolio theme */
+/* ==========================================================================
+   WIN98 & DOODLE OS AUTH MODAL (NETWORK LOGON DIALOG)
+   ========================================================================== */
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-@keyframes scaleUp {
-  from {
-    transform: scale(0.9) translateY(20px);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-  }
+@keyframes popWin {
+  from { transform: scale(0.95) translateY(10px); opacity: 0; }
+  to { transform: scale(1) translateY(0); opacity: 1; }
 }
 
 .auth-modal-overlay {
@@ -28,74 +18,83 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: rgba(6, 4, 12, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background-color: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 99999;
-  animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+  padding: 16px;
 }
 
-/* Modal Card Wrapper */
+/* Win98 Dialog Card Wrapper */
 .auth-modal-card-container {
-  background-color: var(--color-surface-container);
-  border: 1px solid rgba(220, 143, 255, 0.15);
-  border-radius: 24px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6), 0 0 40px rgba(220, 143, 255, 0.05);
+  background-color: #C0C0C0;
+  border-top: 3px solid #FFFFFF;
+  border-left: 3px solid #FFFFFF;
+  border-right: 3px solid #000000;
+  border-bottom: 3px solid #000000;
+  box-shadow: 1.5px 1.5px 0px #DFDFDF inset, -1.5px -1.5px 0px #808080 inset, 8px 12px 30px rgba(0, 0, 0, 0.4);
   position: relative;
   overflow: hidden;
-  width: 768px;
+  width: 760px;
   max-width: 100%;
   min-height: 520px;
-  animation: scaleUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: popWin 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: var(--font-sans);
 }
 
 /* Close button inside card */
 .auth-modal-close {
   position: absolute;
-  top: 20px;
-  right: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-on-surface-variant);
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
+  top: 8px;
+  right: 8px;
+  width: 20px;
+  height: 18px;
+  background-color: #C0C0C0;
+  border-top: 1.5px solid #FFFFFF;
+  border-left: 1.5px solid #FFFFFF;
+  border-right: 1.5px solid #000000;
+  border-bottom: 1.5px solid #000000;
+  color: #000000;
+  font-size: 11px;
+  font-weight: bold;
   cursor: pointer;
   z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
-  font-size: 14px;
-  transition: all 0.2s ease;
+  padding: 0;
+  line-height: 1;
 }
 
-.auth-modal-close:hover {
-  background: rgba(255, 69, 58, 0.15);
-  border-color: rgba(255, 69, 58, 0.3);
-  color: #ff6f79;
-  transform: rotate(90deg);
+.auth-modal-close:active {
+  border-top: 1.5px solid #000000;
+  border-left: 1.5px solid #000000;
+  border-right: 1.5px solid #FFFFFF;
+  border-bottom: 1.5px solid #FFFFFF;
+  padding-top: 1px;
+  padding-left: 1px;
 }
 
-/* Form containers */
+/* Form Containers */
 .auth-modal-card-container .form-container {
   position: absolute;
   top: 0;
   height: 100%;
-  transition: all 0.6s cubic-bezier(0.77, 0, 0.175, 1);
+  transition: all 0.5s cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-/* Sign In Form - Left Side */
+/* Sign In Form - Left */
 .auth-modal-card-container .sign-in-container {
   left: 0;
   width: 50%;
   z-index: 2;
 }
 
-/* Sign Up Form - Right Side */
+/* Sign Up Form - Right */
 .auth-modal-card-container .sign-up-container {
   left: 0;
   width: 50%;
@@ -103,7 +102,7 @@
   z-index: 1;
 }
 
-/* Slide Panel Animation - Active states */
+/* Slide Panel Animation */
 .auth-modal-card-container.right-panel-active .sign-in-container {
   transform: translateX(100%);
   opacity: 0;
@@ -116,149 +115,157 @@
   z-index: 5;
 }
 
-/* Form general styling */
+/* Form General Styling */
 .auth-modal-card-container form {
-  background-color: var(--color-surface-container);
+  background-color: #C0C0C0;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  padding: 0 45px;
+  padding: 40px 35px 25px;
   height: 100%;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .auth-modal-card-container h1 {
   font-weight: 800;
-  margin: 0 0 15px;
-  font-size: 24px;
-  color: var(--color-on-surface);
+  margin: 0 0 10px;
+  font-size: 20px;
+  color: #000000;
   letter-spacing: -0.5px;
 }
 
 .auth-modal-card-container span {
-  font-size: 12px;
-  color: var(--color-on-surface-variant);
-  margin-bottom: 15px;
+  font-size: 11px;
+  color: #57534E;
+  margin-bottom: 12px;
+  font-family: var(--font-mono);
 }
 
 .auth-modal-card-container .social-container {
-  margin: 10px 0 20px;
+  margin: 6px 0 14px;
   display: flex;
-  gap: 12px;
+  gap: 10px;
 }
 
 .auth-modal-card-container .social-icon {
-  border: 1px solid var(--color-outline-variant);
-  background: var(--color-surface-container-low);
-  border-radius: 12px;
+  background-color: #C0C0C0;
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #000000;
+  border-bottom: 2px solid #000000;
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  height: 44px;
-  width: 44px;
-  color: var(--color-on-surface);
+  height: 36px;
+  width: 36px;
+  color: #000000;
   text-decoration: none;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
 }
 
-.auth-modal-card-container .social-icon:hover {
-  background: var(--color-surface-container-high);
-  border-color: var(--color-primary);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(220, 143, 255, 0.15);
+.auth-modal-card-container .social-icon:active {
+  border-top: 2px solid #000000;
+  border-left: 2px solid #000000;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
 }
 
 .auth-modal-card-container .social-icon svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
-/* Inputs and Forms */
+/* Inputs */
 .auth-modal-card-container .input-group {
   width: 100%;
-  margin: 6px 0;
+  margin: 4px 0;
 }
 
 .auth-modal-card-container input {
-  background-color: var(--color-surface-container-low);
-  border: 1px solid var(--color-outline-variant);
-  color: var(--color-on-surface);
-  padding: 12px 16px;
+  background-color: #FFFFFF;
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  box-shadow: 1px 1px 0px #000000 inset;
+  color: #000000;
+  padding: 8px 12px;
   margin: 0;
   width: 100%;
-  border-radius: 12px;
-  font-family: inherit;
-  font-size: 14px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: var(--font-mono);
+  font-size: 12px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .auth-modal-card-container input:focus {
-  background-color: var(--color-surface-container-high);
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px rgba(220, 143, 255, 0.2);
-}
-
-.auth-modal-card-container input::placeholder {
-  color: var(--color-on-surface-variant);
-  opacity: 0.6;
+  background-color: #FFFFF0;
+  border-color: #000080;
 }
 
 .auth-modal-card-container .forgot-password {
-  color: var(--color-on-surface-variant);
-  font-size: 12px;
-  margin: 15px 0;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.auth-modal-card-container .forgot-password:hover {
-  color: var(--color-primary);
+  color: #000080;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  margin: 10px 0;
   text-decoration: underline;
-}
-
-/* Action Buttons */
-.auth-modal-card-container button {
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  color: #100c1a;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  padding: 14px 45px;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  margin-top: 10px;
-  box-shadow: 0 4px 16px rgba(220, 143, 255, 0.2);
 }
 
-.auth-modal-card-container button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(220, 143, 255, 0.3);
-  opacity: 0.95;
+/* Action Buttons (Win98 3D Bevel) */
+.auth-modal-card-container button[type="submit"] {
+  background-color: #000080;
+  color: #FFFFFF;
+  border-top: 2px solid #6699FF;
+  border-left: 2px solid #6699FF;
+  border-right: 2px solid #000040;
+  border-bottom: 2px solid #000040;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 8px 30px;
+  cursor: pointer;
+  margin-top: 8px;
+  box-shadow: 1px 1px 0px #000000;
 }
 
-.auth-modal-card-container button:active {
-  transform: scale(0.97);
+.auth-modal-card-container button[type="submit"]:active {
+  border-top: 2px solid #000040;
+  border-left: 2px solid #000040;
+  border-right: 2px solid #6699FF;
+  border-bottom: 2px solid #6699FF;
+  padding-top: 9px;
+  padding-left: 31px;
 }
 
-/* Ghost Button for sliding trigger */
+/* Ghost Button in Overlay */
 .auth-modal-card-container button.ghost {
-  background: transparent;
-  border: 1.5px solid #ffffff;
-  color: #ffffff;
-  box-shadow: none;
+  background-color: #C0C0C0;
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #000000;
+  border-bottom: 2px solid #000000;
+  color: #000000;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 8px 24px;
+  cursor: pointer;
+  margin-top: 12px;
 }
 
-.auth-modal-card-container button.ghost:hover {
-  background-color: #ffffff;
-  color: var(--color-surface-dim);
-  box-shadow: 0 4px 16px rgba(255, 255, 255, 0.2);
+.auth-modal-card-container button.ghost:active {
+  border-top: 2px solid #000000;
+  border-left: 2px solid #000000;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  padding-top: 9px;
+  padding-left: 25px;
 }
 
-/* Overlay Container (Sliding background) */
+/* Overlay Container (Classic Windows 98 Blue Gradient) */
 .auth-modal-card-container .overlay-container {
   position: absolute;
   top: 0;
@@ -266,25 +273,26 @@
   width: 50%;
   height: 100%;
   overflow: hidden;
-  transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);
+  transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
   z-index: 100;
+  border-left: 2px solid #FFFFFF;
 }
 
 .auth-modal-card-container .overlay {
-  background: linear-gradient(135deg, var(--color-primary) 0%, #3a0ca3 100%);
-  background-size: cover;
-  background-position: center;
+  background: linear-gradient(135deg, #000080 0%, #1084D0 100%);
   color: #FFFFFF;
   position: relative;
   left: -100%;
   height: 100%;
   width: 200%;
   transform: translateX(0);
-  transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);
+  transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 .auth-modal-card-container.right-panel-active .overlay-container {
   transform: translateX(-100%);
+  border-left: none;
+  border-right: 2px solid #000000;
 }
 
 .auth-modal-card-container.right-panel-active .overlay {
@@ -298,13 +306,14 @@
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  padding: 0 40px;
+  padding: 0 35px;
   text-align: center;
   top: 0;
   height: 100%;
   width: 50%;
   transform: translateX(0);
-  transition: transform 0.6s cubic-bezier(0.77, 0, 0.175, 1);
+  transition: transform 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+  box-sizing: border-box;
 }
 
 .auth-modal-card-container .overlay-left {
@@ -325,20 +334,20 @@
 }
 
 .auth-modal-card-container .overlay-panel h1 {
-  font-size: 28px;
+  font-size: 22px;
   color: #FFFFFF;
-  margin-bottom: 15px;
+  margin-bottom: 12px;
 }
 
 .auth-modal-card-container .overlay-panel p {
-  font-size: 13px;
-  font-weight: 400;
-  line-height: 1.6;
-  margin-bottom: 25px;
-  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  line-height: 1.5;
+  margin-bottom: 16px;
+  color: #E1F5FE;
 }
 
-/* Mobile Responsive Adjustments */
+/* Mobile Responsive */
 .mobile-switch-text {
   display: none;
 }
@@ -348,9 +357,8 @@
     min-height: 520px;
     height: auto;
     width: 100%;
-    max-width: 420px;
-    border-radius: 24px;
-    padding: 35px 0;
+    max-width: 400px;
+    padding: 20px 0;
   }
 
   .auth-modal-card-container .form-container {
@@ -359,15 +367,15 @@
     position: relative;
     top: 0;
     left: 0;
-    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: all 0.35s ease;
   }
 
-  /* Form sliding on mobile: when not active, push sign-up to right, sign-in to center */
   .auth-modal-card-container .sign-in-container {
     opacity: 1;
     z-index: 2;
     transform: translateX(0);
   }
+  
   .auth-modal-card-container .sign-up-container {
     opacity: 0;
     z-index: 1;
@@ -378,7 +386,6 @@
     height: 100%;
   }
 
-  /* When active: push sign-in to left, sign-up to center */
   .auth-modal-card-container.right-panel-active .sign-in-container {
     opacity: 0;
     z-index: 1;
@@ -396,65 +403,60 @@
     position: relative;
   }
 
-  /* Hide overlay container completely on mobile */
   .auth-modal-card-container .overlay-container {
     display: none !important;
   }
 
   .auth-modal-card-container form {
-    padding: 50px 30px 20px;
+    padding: 35px 20px 15px;
   }
 
   .mobile-switch-text {
     display: block;
     text-align: center;
-    margin-top: 20px;
-    font-size: 13px;
-    color: var(--color-on-surface-variant);
+    margin-top: 14px;
+    font-size: 11px;
+    color: #1C1917;
+    font-family: var(--font-mono);
   }
 
   .mobile-switch-text button {
     background: none;
     border: none;
-    color: var(--color-primary);
+    color: #000080;
     font-weight: bold;
     cursor: pointer;
     text-decoration: underline;
     padding: 0;
-    margin-left: 5px;
+    margin-left: 4px;
     font-family: inherit;
     box-shadow: none;
     width: auto;
   }
 
-  .auth-modal-card-container button:not(.ghost):not(.auth-modal-close) {
-    padding: 12px 20px;
+  .auth-modal-card-container button[type="submit"] {
     width: 100%;
-    max-width: 280px;
+    max-width: 240px;
   }
 }
 
-/* Funny Error Box Styling */
+/* Error Box in Win98 */
 .auth-error-box {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-  border-radius: 12px;
-  padding: 10px 14px;
-  margin-top: 12px;
+  background: #FFE5EC;
+  border: 1px solid #D90429;
+  padding: 8px 10px;
+  margin-top: 10px;
   width: 100%;
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 8px;
   text-align: left;
-  animation: fadeIn 0.3s ease;
   box-sizing: border-box;
 }
 
 .auth-error-icon {
-  color: #ef4444;
-  font-size: 14px;
-  margin-top: 2px;
-  font-weight: bold;
+  color: #D90429;
+  font-size: 13px;
   flex-shrink: 0;
 }
 
@@ -464,29 +466,22 @@
 }
 
 .auth-error-title {
-  color: #ff6b6b;
+  color: #D90429;
   font-weight: 700;
-  font-size: 13px;
-  margin-bottom: 2px;
-  line-height: 1.2;
+  font-size: 11px;
+  font-family: var(--font-mono);
 }
 
 .auth-error-desc {
-  color: #afa8bc;
-  font-size: 11px;
-  line-height: 1.4;
+  color: #57534E;
+  font-size: 10px;
+  line-height: 1.3;
 }
 
-.auth-error-desc strong {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-/* Verification Mode styles */
+/* Verification Mode */
 .auth-modal-card-container.verification-mode {
-  width: 540px !important;
-  min-height: 520px !important;
-  transition: all 0.5s cubic-bezier(0.77, 0, 0.175, 1);
+  width: 520px !important;
+  min-height: 500px !important;
 }
 
 .verification-container {
@@ -494,66 +489,37 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 35px 25px;
   height: 100%;
   box-sizing: border-box;
   text-align: center;
-  min-height: 520px;
-  animation: fadeIn 0.4s ease;
 }
 
 .verification-container h2 {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 800;
-  margin-bottom: 12px;
-  color: var(--color-on-surface);
-  letter-spacing: -0.5px;
+  margin-bottom: 8px;
+  color: #000000;
 }
 
 .verification-subtitle {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--color-on-surface-variant);
-  margin-bottom: 24px;
-  padding: 0 10px;
-}
-
-.verification-subtitle strong.highlight-code {
-  color: var(--color-primary);
-  font-size: 16px;
-  background: rgba(220, 143, 255, 0.1);
-  padding: 2px 8px;
-  border-radius: 6px;
-  border: 1px dashed rgba(220, 143, 255, 0.3);
-  font-family: monospace;
-}
-
-.verification-subtitle span.highlight-phone {
-  color: var(--color-secondary);
-  font-weight: 600;
-}
-
-.verification-instruction {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--color-on-surface-variant);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: #57534E;
   margin-bottom: 20px;
 }
 
 .verification-boxes {
   display: flex;
-  gap: 12px;
-  margin-bottom: 30px;
+  gap: 8px;
+  margin-bottom: 25px;
   justify-content: center;
-  position: relative;
-  width: 100%;
-  min-height: 60px;
 }
 
 .verification-box-wrapper {
   position: relative;
-  width: 48px;
-  height: 56px;
+  width: 44px;
+  height: 52px;
   flex-shrink: 0;
 }
 
@@ -563,105 +529,59 @@
   left: 0;
   width: 100%;
   height: 100%;
-  margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
+  font-family: var(--font-mono);
   text-align: center;
-  background-color: var(--color-surface-container-low);
-  border: 2px solid var(--color-outline-variant);
-  color: var(--color-on-surface);
-  border-radius: 12px;
+  background-color: #FFFFFF;
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  box-shadow: 1px 1px 0px #000000 inset;
+  color: #000000;
   outline: none;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), border-color 0.2s;
   box-sizing: border-box;
 }
 
 .verification-input:focus {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 15px rgba(220, 143, 255, 0.3);
+  border-color: #000080;
+  background-color: #FFFFF0;
 }
 
 .verify-btn {
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
-  color: #100c1a;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.5px;
-  padding: 14px 60px;
+  background-color: #000080;
+  color: #FFFFFF;
+  border-top: 2px solid #6699FF;
+  border-left: 2px solid #6699FF;
+  border-right: 2px solid #000040;
+  border-bottom: 2px solid #000040;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  padding: 10px 40px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(220, 143, 255, 0.25);
-  transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.2s;
+  box-shadow: 1px 1px 0px #000000;
+}
+
+.verify-btn:active {
+  border-top: 2px solid #000040;
+  border-left: 2px solid #000040;
+  border-right: 2px solid #6699FF;
+  border-bottom: 2px solid #6699FF;
 }
 
 .give-up-link {
   background: none;
   border: none;
-  color: var(--color-on-surface-variant);
-  font-size: 12px;
+  color: #808080;
+  font-size: 11px;
+  font-family: var(--font-mono);
   cursor: pointer;
   text-decoration: underline;
-  margin-top: 25px;
-  opacity: 0.6;
-  transition: opacity 0.2s;
+  margin-top: 18px;
 }
 
 .give-up-link:hover {
-  opacity: 1;
-  color: #ff6f79;
-}
-
-/* Success Screen styling */
-.verification-success-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 40px;
-  text-align: center;
-  min-height: 520px;
-  animation: fadeIn 0.4s ease;
-  box-sizing: border-box;
-}
-
-.success-icon {
-  font-size: 64px;
-  margin-bottom: 20px;
-  animation: successBounce 1s infinite alternate;
-}
-
-@keyframes successBounce {
-  from {
-    transform: translateY(0);
-  }
-  to {
-    transform: translateY(-15px);
-  }
-}
-
-@media (max-width: 768px) {
-  .auth-modal-card-container.verification-mode {
-    width: 100% !important;
-    max-width: 420px;
-    min-height: 480px !important;
-  }
-  
-  .verification-container {
-    padding: 24px 16px;
-    min-height: 450px;
-  }
-  
-  .verification-boxes {
-    gap: 6px;
-  }
-  
-  .verification-box-wrapper {
-    width: 40px;
-    height: 48px;
-  }
-  
-  .verification-input {
-    font-size: 18px;
-  }
+  color: #D90429;
 }

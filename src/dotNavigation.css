@@ -1,0 +1,86 @@
+/* 9-Dot Expandable Navigation Menu (Doodle OS 98 Enhanced) */
+.dot-nav-wrapper {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9999;
+}
+
+.dot-navigation {
+  position: relative;
+  width: 58px;
+  height: 58px;
+  background: #C0C0C0;
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+  box-shadow: 2px 2px 0px #000000, 0 8px 24px rgba(0, 0, 0, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition-delay: 0.4s;
+  user-select: none;
+}
+
+.dot-navigation.active {
+  width: 210px;
+  height: 210px;
+  background: #ECE7DA;
+  border-top: 2px solid #808080;
+  border-left: 2px solid #808080;
+  border-right: 2px solid #FFFFFF;
+  border-bottom: 2px solid #FFFFFF;
+  box-shadow: inset 1px 1px 0px #000, 0 12px 32px rgba(0, 0, 0, 0.35);
+  transition-delay: 0s;
+}
+
+.dot-navigation span.dot-item {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #000080;
+  border-radius: 50%;
+  transform: translate(calc(12px * var(--x)), calc(12px * var(--y)));
+  transition: transform 0.4s ease, width 0.4s ease, height 0.4s ease, background 0.3s ease, box-shadow 0.3s ease, border-radius 0.3s ease;
+  transition-delay: calc(0.04s * var(--i));
+}
+
+.dot-navigation.active span.dot-item {
+  width: 48px;
+  height: 48px;
+  background: #C0C0C0;
+  border-top: 2px solid #FFFFFF;
+  border-left: 2px solid #FFFFFF;
+  border-right: 2px solid #808080;
+  border-bottom: 2px solid #808080;
+  box-shadow: 1px 1px 0px #000000;
+  border-radius: 4px;
+  transform: translate(calc(62px * var(--x)), calc(62px * var(--y)));
+}
+
+.dot-navigation span.dot-item:hover {
+  background: #000080 !important;
+  color: #FFFFFF !important;
+  transform: translate(calc(62px * var(--x)), calc(62px * var(--y))) scale(1.15) !important;
+  z-index: 10;
+}
+
+.dot-navigation span.dot-item .dot-icon {
+  transition: all 0.3s ease;
+  font-size: 0px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dot-navigation.active span.dot-item .dot-icon {
+  font-size: 18px;
+  opacity: 1;
+  pointer-events: auto;
+}

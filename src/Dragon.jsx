@@ -120,13 +120,13 @@ export default function Dragon({ opacity = 0.7, size = 1.0 }) {
         {/* Dragon Head */}
         <g id="dragon-Cabeza">
           <path
-            fill="#dc8fff"
-            fillOpacity="0.7"
+            fill="#000080"
+            fillOpacity="0.9"
             d="M-28.9,-1.1L-28.55 -1.95Q-28.1 -3.1 -27.25 -2.95L-26.7 -2.95Q-27.7 -1.65 -28.9 -1.1M-18.35,-1.8Q-15.1 -10.3 -9.6 -6.05Q-15.1 -6.2 -18.35 -1.8M-18.35,1.1Q-15.1 5.45 -9.6 5.35Q-15.1 9.55 -18.35 1.1M-26.7,2.2L-27.25 2.25Q-28.1 2.4 -28.55 1.2L-28.9 0.35Q-27.7 0.9 -26.7 2.2"
           />
           <path
-            fill="#ffffff"
-            fillOpacity="0.85"
+            fill="#1084D0"
+            fillOpacity="0.95"
             d="M-21.05,-8.25Q-13.6 -15.95 -1.3 -12.1Q-7.85 -8.5 -5.85 -4.35Q-2.3 -4.85 10.5 0.15Q0 4.35 -5.85 3.65Q-7.85 7.75 -1.25 12.45Q-13.6 15.2 -21.05 7.5Q-29.55 4.05 -30.2 -0.35Q-29.55 -4.8 -21.05 -8.25M-26.7,-2.95L-27.25 -2.95Q-28.1 -3.1 -28.55 -1.95L-28.9 -1.1Q-27.7 -1.65 -26.7 -2.95M-9.6,-6.05Q-15.1 -10.3 -18.35 -1.8Q-15.1 -6.2 -9.6 -6.05M-9.6,5.35Q-15.1 5.45 -18.35 1.1Q-15.1 9.55 -9.6 5.35M-28.9,0.35L-28.55 1.2Q-28.1 2.4 -27.25 2.25L-26.7 2.2Q-27.7 0.9 -28.9 0.35"
           />
         </g>
@@ -143,8 +143,8 @@ export default function Dragon({ opacity = 0.7, size = 1.0 }) {
             x2="819.2"
             y2="0"
           >
-            <stop offset="0" stopColor="#dc8fff" stopOpacity="0.9" />
-            <stop offset="1" stopColor="#ff6f79" stopOpacity="0.25" />
+            <stop offset="0" stopColor="#000080" stopOpacity="0.95" />
+            <stop offset="1" stopColor="#0077B6" stopOpacity="0.4" />
           </linearGradient>
           <path
             fill="url(#dragonGrad1)"
@@ -164,8 +164,8 @@ export default function Dragon({ opacity = 0.7, size = 1.0 }) {
             x2="819.2"
             y2="0"
           >
-            <stop offset="0" stopColor="#dc8fff" stopOpacity="1" />
-            <stop offset="1" stopColor="#ff6f79" stopOpacity="0.7" />
+            <stop offset="0" stopColor="#000080" stopOpacity="1" />
+            <stop offset="1" stopColor="#023E8A" stopOpacity="0.8" />
           </linearGradient>
           <linearGradient
             id="dragonGrad3"
@@ -177,8 +177,8 @@ export default function Dragon({ opacity = 0.7, size = 1.0 }) {
             x2="819.2"
             y2="0"
           >
-            <stop offset="0" stopColor="#dc8fff" stopOpacity="1" />
-            <stop offset="1" stopColor="#ff6f79" stopOpacity="0.7" />
+            <stop offset="0" stopColor="#000080" stopOpacity="1" />
+            <stop offset="1" stopColor="#023E8A" stopOpacity="0.8" />
           </linearGradient>
           <path
             fill="url(#dragonGrad2)"
