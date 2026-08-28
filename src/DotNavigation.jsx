@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './dotNavigation.css';
 
-function DotNavigation({ onOpenAuth, onToggleDragon, onScrollToSection, onOpenCoffee, onOpenBug, showToast }) {
+function DotNavigation({ onOpenAuth, onToggleDragon, onScrollToSection, onOpenCoffee, onOpenBug, onToggleSpiderClock, showToast }) {
   const [isActive, setIsActive] = useState(false);
   const menuRef = useRef(null);
 
@@ -30,6 +30,9 @@ function DotNavigation({ onOpenAuth, onToggleDragon, onScrollToSection, onOpenCo
       onOpenCoffee();
     } else if (item.actionType === 'joke') {
       onOpenBug();
+    } else if (item.actionType === 'spider') {
+      if (onToggleSpiderClock) onToggleSpiderClock();
+      showToast('🕷️ স্পাইডার ক্লক টগল করা হয়েছে!');
     }
   };
 
@@ -40,8 +43,8 @@ function DotNavigation({ onOpenAuth, onToggleDragon, onScrollToSection, onOpenCo
     { i: 3, x: 0, y: 1, icon: '✉️', label: 'নক দিন', actionType: 'scroll', target: 'contact', msg: '✉️ টিকিট ফর্মে নিয়ে যাওয়া হচ্ছে...' },
     { i: 4, x: 1, y: 1, icon: '🛑', label: 'ভিক্টিম', actionType: 'scroll', target: 'victims', msg: '🛑 ভিক্টিমদের আর্তনাদ লোড হচ্ছে...' },
     { i: 5, x: -1, y: -1, icon: '🔑', label: 'লগইন', actionType: 'auth' },
-    { i: 6, x: 0, y: 0, icon: '🐉', label: 'ড্রাগন সেটিংস', actionType: 'dragon' },
-    { i: 7, x: -1, y: 1, icon: '☕', label: 'কফি', actionType: 'coffee' },
+    { i: 6, x: 0, y: 0, icon: '🕷️', label: 'স্পাইডার ক্লক', actionType: 'spider' },
+    { i: 7, x: -1, y: 1, icon: '🐉', label: 'ড্রাগন সেটিংস', actionType: 'dragon' },
     { i: 8, x: 1, y: -1, icon: '🐛', label: 'বাগ জোক', actionType: 'joke' },
   ];
 

@@ -1,0 +1,131 @@
+/* Spider Clock Animation CSS with Interactive Elastic Pull */
+.spider-clock-container {
+  position: fixed;
+  top: 0px;
+  right: 25px;
+  z-index: 9990;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  user-select: none;
+  touch-action: none;
+}
+
+@media (max-width: 640px) {
+  .spider-clock-container {
+    right: 8px;
+    transform-origin: top right;
+  }
+}
+
+/* Elastic Web Thread Line */
+.spider-clock-container .vline-thread {
+  width: 2px;
+  background: linear-gradient(to bottom, #A0A0A0 0%, #FFFFFF 60%, #808080 100%);
+  opacity: 0.85;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.6);
+  transform-origin: top center;
+  transition: opacity 0.2s ease;
+}
+
+/* Watch Body Outer Styling */
+.spider-clock-container .gsapWrapper {
+  visibility: visible;
+  position: relative;
+  border-radius: 50%;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: 0 12px 35px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0,0,0,0.4);
+  cursor: grab;
+  transition: filter 0.2s ease, transform 0.1s ease;
+}
+
+.spider-clock-container .gsapWrapper:active {
+  cursor: grabbing;
+}
+
+.spider-clock-container .gsapWrapper:hover {
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+}
+
+.spider-clock-container #wBody {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  aspect-ratio: 1/1;
+}
+
+@media (max-width: 640px) {
+  .spider-clock-container #wBody {
+    width: 135px;
+    height: 135px;
+  }
+}
+
+.spider-clock-container #watch {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1/1;
+  overflow: visible;
+}
+
+.spider-clock-container #watch svg {
+  overflow: visible;
+  width: 100%;
+  height: 100%;
+}
+
+.spider-clock-hint {
+  position: absolute;
+  bottom: -22px;
+  background: #FFE680;
+  border: 1px solid #1C1917;
+  color: #000080;
+  font-family: monospace;
+  font-size: 9px;
+  font-weight: bold;
+  padding: 1px 6px;
+  white-space: nowrap;
+  box-shadow: 1px 1px 0px #000;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.spider-clock-container:hover .spider-clock-hint {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.spider-clock-close-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #C0C0C0;
+  border: 2px solid #FFFFFF;
+  border-right-color: #000;
+  border-bottom-color: #000;
+  color: #800000;
+  font-family: monospace;
+  font-size: 10px;
+  font-weight: bold;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 1px 1px 0px #000;
+  z-index: 20;
+}
+
+.spider-clock-close-btn:hover {
+  background: #800000;
+  color: #FFF;
+}
