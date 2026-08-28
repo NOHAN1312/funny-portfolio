@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Dragon from './Dragon';
 import Flower from './Flower';
 import Butterflies from './Butterflies';
@@ -82,6 +82,87 @@ function App() {
   const [maximizedProject, setMaximizedProject] = useState(null);
   const [closedProjects, setClosedProjects] = useState([]);
   const [runningProject, setRunningProject] = useState(null);
+  const [activeLiveProject, setActiveLiveProject] = useState(null);
+  const [isLiveProjectMaximized, setIsLiveProjectMaximized] = useState(false);
+  const [iframeKey, setIframeKey] = useState(0);
+
+  // Draggable Win98 Live Project Window State
+  const [liveWinPos, setLiveWinPos] = useState({ x: 0, y: 0 });
+  const [isDraggingLiveWin, setIsDraggingLiveWin] = useState(false);
+  const liveWinDragRef = useRef({ startX: 0, startY: 0, initialPosX: 0, initialPosY: 0 });
+
+  const handleTitleBarMouseDown = (e) => {
+    if (e.button !== 0 || isLiveProjectMaximized) return;
+    setIsDraggingLiveWin(true);
+    liveWinDragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialPosX: liveWinPos.x,
+      initialPosY: liveWinPos.y
+    };
+  };
+
+  const handleTitleBarTouchStart = (e) => {
+    if (isLiveProjectMaximized || !e.touches[0]) return;
+    setIsDraggingLiveWin(true);
+    liveWinDragRef.current = {
+      startX: e.touches[0].clientX,
+      startY: e.touches[0].clientY,
+      initialPosX: liveWinPos.x,
+      initialPosY: liveWinPos.y
+    };
+  };
+
+  useEffect(() => {
+    if (!isDraggingLiveWin) return;
+
+    const handleMouseMove = (e) => {
+      const dx = e.clientX - liveWinDragRef.current.startX;
+      const dy = e.clientY - liveWinDragRef.current.startY;
+      setLiveWinPos({
+        x: liveWinDragRef.current.initialPosX + dx,
+        y: liveWinDragRef.current.initialPosY + dy
+      });
+    };
+
+    const handleTouchMove = (e) => {
+      if (!e.touches[0]) return;
+      const dx = e.touches[0].clientX - liveWinDragRef.current.startX;
+      const dy = e.touches[0].clientY - liveWinDragRef.current.startY;
+      setLiveWinPos({
+        x: liveWinDragRef.current.initialPosX + dx,
+        y: liveWinDragRef.current.initialPosY + dy
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingLiveWin(false);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleMouseUp);
+    };
+  }, [isDraggingLiveWin]);
+
+  // Lock background scroll when live window is open
+  useEffect(() => {
+    if (activeLiveProject) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [activeLiveProject]);
 
   // Project Window Control Handler
   const handleProjectControl = (projId, projName, action) => {
@@ -93,8 +174,10 @@ function App() {
       showToast(isMin ? `📂 "${projName}" এক্সপ্যান্ড করা হয়েছে!` : `📁 "${projName}" মিনিমাইজ করা হয়েছে!`);
     } else if (action === 'max') {
       const proj = projects.find(p => p.id === projId);
-      setMaximizedProject(proj);
-      showToast(`🗖 "${projName}" ফুল-স্ক্রিনে ওপেন করা হয়েছে!`);
+      setActiveLiveProject(proj);
+      setLiveWinPos({ x: 0, y: 0 });
+      setIsLiveProjectMaximized(false);
+      showToast(`🚀 "${projName}" লাইভ উইন্ডোতে চালু হচ্ছে!`);
     } else if (action === 'close') {
       setClosedProjects(prev => [...prev, projId]);
       showToast(`✕ "${projName}" বন্ধ করা হয়েছে!`);
@@ -228,39 +311,51 @@ function App() {
   const projects = [
     {
       id: 1,
-      name: "গুগল সার্চ ইঞ্জিনিয়ারিং",
-      description: "অন্যের কোড কপি করে নিজের নামে চালিয়ে দেওয়ার এক অনন্য নিদর্শন।",
-      image: "./1.jpg",
-      tag: "কপি-পেস্ট ইঞ্জিনিয়ারিং",
-      fileSize: "4.2 MB",
-      icon: "🔍"
+      name: "HOCO W35 Air 3D Experience",
+      codeName: "HOCO_W35_3D",
+      tag: "Three.js • 3D Canvas",
+      fileSize: "14.8 MB",
+      icon: "🎧",
+      folder: "hoco",
+      url: "/projects/hoco/index.html",
+      description: "HOCO W35 Air হেডফোনের জন্য তৈরি সম্পূর্ণ ইন্টারেক্টিভ 3D শোকেস ল্যান্ডিং পেজ। রিয়েল-টাইম 3D মডেল ভিউ ও স্মুথ ক্যামেরা কন্ট্রোল।",
+      image: "./projects_thumb/hoco.jpg"
     },
     {
       id: 2,
-      name: "সেমিকোলন খোঁজার যুদ্ধ",
-      description: "সারা রাত জেগে একটা মিসিং সেমিকোলন খুঁজে বের করার পর যে আনন্দ হয়, তা অমূল্য।",
-      image: "./2.jpg",
-      tag: "অসীম ধৈর্য",
-      fileSize: "1.8 MB",
-      icon: "🐛"
+      name: "Apple iPhone 3D Showcase",
+      codeName: "IPHONE_3D_APP",
+      tag: "Next.js • React Three Fiber",
+      fileSize: "8.5 MB",
+      icon: "📱",
+      folder: "iphone",
+      url: "/projects/iphone/index.html",
+      description: "নেক্সট-জেন Apple iPhone এর 3D ইন্টারেক্টিভ ক্যানভাস অভিজ্ঞতা। স্মুথ স্ক্রোল ট্রানজিশন, 3D লাইটিং ও ডাইনামিক ক্যামেরা অ্যাঙ্গেল।",
+      image: "./projects_thumb/iphone.jpg"
     },
     {
       id: 3,
-      name: "বাগ নাকি ফিচার?",
-      description: "ক্লায়েন্টকে বুঝানো যে এই গ্লিচটা আসলে একটা 'আর্টিস্টিক চয়েস' ছিল।",
-      image: "./3.jpg",
-      tag: "মার্কেটিং স্ট্র্যাটেজি",
-      fileSize: "9.9 MB",
-      icon: "🎨"
+      name: "NUR 3D Experience & Audio",
+      codeName: "NUR_WEB_APP",
+      tag: "Next.js • 3D Background • Audio",
+      fileSize: "18.2 MB",
+      icon: "✨",
+      folder: "nur",
+      url: "/projects/nur/index.html",
+      description: "ইন্টারেক্টিভ 3D ক্যানভাস ব্যাকগ্রাউন্ড, ডিজিটাল অডিও প্লেয়ার, ডেট উইজেট ও স্মুথ ট্রানজিশন সহ পূর্ণাঙ্গ নেক্সট.জেএস ওয়েব অ্যাপ্লিকেশন।",
+      image: "./projects_thumb/nur.jpg"
     },
     {
       id: 4,
-      name: "সার্চিং অলিম্পিক",
-      description: "সঠিক কি-ওয়ার্ড দিয়ে স্ট্যাক ওভারফ্লো থেকে সমাধান বের করার এক মহাকাব্য।",
-      image: "./4.jpg",
-      tag: "গুগল স্পেশালিস্ট",
-      fileSize: "12.0 MB",
-      icon: "⚡"
+      name: "KINETIC // Surreal 3D Portfolio",
+      codeName: "KINETIC_SURREAL",
+      tag: "WebGL • Canvas Physics • UI",
+      fileSize: "6.4 MB",
+      icon: "🔮",
+      folder: "kinetic",
+      url: "/projects/kinetic/index.html",
+      description: "সাইবারপাঙ্ক ও সুররিয়েল ডার্ক থিমের ইন্টারেক্টিভ ইঞ্জিনিয়ার ড্যাশবোর্ড, ক্যানভাস গ্লো ইফেক্টস এবং পার্টিকল ইন্টারেকশন।",
+      image: "./projects_thumb/kinetic.jpg"
     }
   ];
 
@@ -901,16 +996,23 @@ function App() {
                       </div>
 
                       {/* Actions */}
-                      <div className="pt-2 flex justify-between items-center border-t border-[#808080]">
+                      <div className="pt-2 flex flex-wrap justify-between items-center gap-2 border-t border-[#808080]">
                         <span className="text-[11px] font-mono text-[#000080] font-bold">
-                          ● Status: Running (No Tests)
+                          ● Status: 3D Live Ready
                         </span>
-                        <button 
-                          onClick={() => setRunningProject(proj)}
-                          className="win98-btn-primary px-4 py-1.5 text-xs font-bold text-white cursor-pointer shadow-sm"
-                        >
-                          [ রান করুন ➔ ]
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => {
+                              setActiveLiveProject(proj);
+                              setIsLiveProjectMaximized(false);
+                              showToast(`🚀 "${proj.name}" লাইভ উইন্ডোতে চালু হচ্ছে!`);
+                            }}
+                            className="win98-btn-primary px-4 py-1.5 text-xs font-bold text-white cursor-pointer shadow-sm flex items-center gap-1.5"
+                          >
+                            <span>🚀</span>
+                            <span>[ লাইভ চালান ]</span>
+                          </button>
+                        </div>
                       </div>
 
                     </div>
@@ -920,116 +1022,6 @@ function App() {
               );
             })}
           </div>
-
-          {/* PROJECT RUNNER MODAL */}
-          {runningProject && (
-            <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="win98-window max-w-lg w-full shadow-2xl animate-popWin">
-                <div className="win98-titlebar">
-                  <div className="flex items-center gap-2">
-                    <span>🚀</span>
-                    <span>RUN: {runningProject.name}.EXE</span>
-                  </div>
-                  <button onClick={() => setRunningProject(null)} className="win98-control-btn">✕</button>
-                </div>
-                <div className="p-6 bg-[#C0C0C0] space-y-4 font-mono text-xs">
-                  <div className="flex items-center gap-3">
-                    <img src={runningProject.image} alt="Thumb" className="w-16 h-16 win98-inset object-cover" />
-                    <div>
-                      <div className="font-bold text-black text-sm" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>{runningProject.name}</div>
-                      <div className="text-[#57534E]">Execution Mode: Direct to Production (YOLO)</div>
-                    </div>
-                  </div>
-
-                  <div className="win98-inset p-3 bg-black text-[#00FF66] space-y-1 font-mono text-[11px]">
-                    <div>&gt; Initializing {runningProject.name}...</div>
-                    <div>&gt; Searching StackOverflow for solution... [100%]</div>
-                    <div>&gt; Copying snippet #8491 into codebase... [DONE]</div>
-                    <div className="text-[#FFE680]">&gt; Status: 0 errors found (Tests were skipped) 😆</div>
-                  </div>
-
-                  <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-[#808080]">
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard?.writeText(`// Code for ${runningProject.name}\nfunction jorataliCode() {\n  return "100% Google Driven";\n}`);
-                        showToast(`📋 "${runningProject.name}" এর কোড ক্লিপবোর্ডে কপি হয়েছে!`);
-                      }}
-                      className="win98-btn px-3 py-1.5 font-bold"
-                    >
-                      📋 কোড কপি করুন
-                    </button>
-                    <button 
-                      onClick={() => {
-                        showToast(`🐛 "${runningProject.name}" এ নতুন বাগ যুক্ত করে ফিচার বানানো হয়েছে!`);
-                      }}
-                      className="win98-btn px-3 py-1.5 font-bold"
-                    >
-                      🐛 বাগ ইনজেক্ট করুন
-                    </button>
-                    <button 
-                      onClick={() => setRunningProject(null)}
-                      className="win98-btn-primary px-4 py-1.5 font-bold text-white"
-                    >
-                      OK (Close)
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* PROJECT FULLSCREEN MAXIMIZED MODAL */}
-          {maximizedProject && (
-            <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-8">
-              <div className="win98-window max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl">
-                <div className="win98-titlebar">
-                  <div className="flex items-center gap-2 text-xs">
-                    <span>🖼️</span>
-                    <span>MAXIMIZED VIEW: {maximizedProject.name}.BMP</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => setMaximizedProject(null)} className="win98-control-btn">✕</button>
-                  </div>
-                </div>
-                <div className="p-6 bg-[#C0C0C0] overflow-y-auto space-y-4 flex-1">
-                  <div className="win98-inset p-2 bg-black">
-                    <img src={maximizedProject.image} alt={maximizedProject.name} className="w-full max-h-[60vh] object-contain mx-auto" />
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center">
-                      <span className="bg-[#FEFAE0] border border-[#D4C46A] text-[#8C5824] px-2.5 py-1 text-xs font-mono font-bold">
-                        🏷️ {maximizedProject.tag}
-                      </span>
-                      <span className="font-mono text-xs text-[#57534E]">File Size: {maximizedProject.fileSize}</span>
-                    </div>
-                    <h2 className="text-2xl font-black text-black" style={{ fontFamily: "'Hind Siliguri', sans-serif" }}>
-                      {maximizedProject.name}
-                    </h2>
-                    <p className="text-sm font-mono text-[#3D3428] bg-white p-3 win98-inset leading-relaxed">
-                      {maximizedProject.description}
-                    </p>
-                  </div>
-                  <div className="flex justify-end gap-3 pt-2 border-t border-[#808080]">
-                    <button 
-                      onClick={() => {
-                        setRunningProject(maximizedProject);
-                        setMaximizedProject(null);
-                      }}
-                      className="win98-btn-primary px-5 py-2 text-xs font-bold text-white cursor-pointer"
-                    >
-                      🚀 প্রোগ্রাম রান করুন
-                    </button>
-                    <button 
-                      onClick={() => setMaximizedProject(null)}
-                      className="win98-btn px-5 py-2 text-xs font-bold text-black cursor-pointer"
-                    >
-                      বন্ধ করুন (Close)
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
         </section>
 
@@ -1601,6 +1593,132 @@ function App() {
 
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
       <Flower />
+
+      {/* LIVE WIN98 INTERACTIVE PROJECT VIEWER MODAL (ROOT LEVEL) */}
+      {activeLiveProject && (
+        <div className="fixed inset-0 z-[9999999] bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden">
+          <div 
+            style={isLiveProjectMaximized ? {} : (typeof window !== 'undefined' && window.innerWidth >= 768 ? { transform: `translate3d(${liveWinPos.x}px, ${liveWinPos.y}px, 0)` } : {})}
+            className={`win98-window w-full max-w-[96vw] sm:max-w-2xl md:max-w-5xl h-[82vh] max-h-[82vh] md:h-[86vh] md:max-h-[86vh] ${isDraggingLiveWin ? 'select-none transition-none' : 'transition-transform duration-75'} flex flex-col shadow-2xl ${isLiveProjectMaximized ? 'h-full max-h-none max-w-none' : ''}`}
+          >
+            
+            {/* Window Titlebar (Draggable Header) */}
+            <div 
+              onMouseDown={handleTitleBarMouseDown}
+              onTouchStart={handleTitleBarTouchStart}
+              onDoubleClick={() => {
+                setIsLiveProjectMaximized(prev => !prev);
+                setLiveWinPos({ x: 0, y: 0 });
+              }}
+              className="win98-titlebar flex justify-between items-center py-2 px-2 sm:px-3 select-none cursor-move active:cursor-grabbing shrink-0"
+              title="মাউস দিয়ে ড্র্যাগ করে উইন্ডোটি যেকোনো জায়গায় সরাতে পারবেন (ডাবল ক্লিকে ফুলস্ক্রিন)"
+            >
+              <div className="flex items-center gap-2 text-xs font-bold text-white truncate pr-2 pointer-events-none">
+                <span>{activeLiveProject.icon}</span>
+                <span className="truncate">C:\PROJECTS\{activeLiveProject.codeName}.EXE</span>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onTouchStart={(e) => e.stopPropagation()}>
+                <button 
+                  onClick={() => {
+                    setActiveLiveProject(null);
+                    showToast(`📁 "${activeLiveProject.name}" বন্ধ করা হয়েছে।`);
+                  }} 
+                  className="win98-control-btn" 
+                  title="Minimize / Dock"
+                >
+                  _
+                </button>
+                <button 
+                  onClick={() => {
+                    setIsLiveProjectMaximized(prev => !prev);
+                    setLiveWinPos({ x: 0, y: 0 });
+                  }} 
+                  className="win98-control-btn hidden sm:inline-flex" 
+                  title={isLiveProjectMaximized ? "Restore Window" : "Maximize Window"}
+                >
+                  {isLiveProjectMaximized ? '❐' : '□'}
+                </button>
+                <button 
+                  onClick={() => setActiveLiveProject(null)} 
+                  className="win98-control-btn font-bold px-2 py-0.5 text-xs bg-[#C0C0C0] text-black hover:bg-[#E0E0E0]" 
+                  title="Close Window"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Address Bar / Toolbar */}
+            <div className="bg-[#C0C0C0] border-b-2 border-[#808080] p-1.5 flex flex-wrap items-center justify-between gap-1.5 text-xs font-mono shrink-0">
+              <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
+                <span className="font-bold text-[#000080] text-[11px] sm:text-xs">Address:</span>
+                <div className="win98-inset px-2 py-0.5 bg-white text-black text-[10px] sm:text-[11px] flex-1 truncate font-mono">
+                  http://localhost{activeLiveProject.url}
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button 
+                  onClick={() => {
+                    setIframeKey(prev => prev + 1);
+                    showToast(`🔄 "${activeLiveProject.name}" রিলোড করা হচ্ছে...`);
+                  }}
+                  className="win98-btn px-2 py-1 text-[11px] sm:text-xs font-bold flex items-center gap-1 cursor-pointer"
+                  title="Reload this project"
+                >
+                  🔄 <span className="hidden sm:inline">রিলোড</span>
+                </button>
+                <button 
+                  onClick={() => setLiveWinPos({ x: 0, y: 0 })}
+                  className="win98-btn px-2 py-1 text-[11px] sm:text-xs font-bold hidden sm:flex items-center gap-1 cursor-pointer"
+                  title="Reset window position to center"
+                >
+                  🎯 <span className="hidden sm:inline">সেন্টার</span>
+                </button>
+                <a 
+                  href={activeLiveProject.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="win98-btn px-2 py-1 text-[11px] sm:text-xs font-bold flex items-center gap-1 text-black cursor-pointer"
+                  title="Open full page in new tab"
+                >
+                  🌐 <span className="hidden sm:inline">নতুন ট্যাব</span>
+                </a>
+                <button 
+                  onClick={() => setActiveLiveProject(null)}
+                  className="win98-btn-primary px-2.5 py-1 text-[11px] sm:text-xs font-bold text-white cursor-pointer"
+                >
+                  ✕ বন্ধ
+                </button>
+              </div>
+            </div>
+
+            {/* Embedded Iframe Live Project View */}
+            <div className="flex-1 w-full bg-[#111111] relative win98-inset overflow-hidden">
+              <iframe
+                key={iframeKey}
+                src={activeLiveProject.url}
+                title={activeLiveProject.name}
+                className={`w-full h-full border-0 bg-white ${isDraggingLiveWin ? 'pointer-events-none' : ''}`}
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+              />
+            </div>
+
+            {/* Win98 Bottom Status Bar */}
+            <div className="bg-[#C0C0C0] border-t-2 border-[#FFFFFF] px-2.5 py-1 flex items-center justify-between text-[10px] sm:text-[11px] font-mono text-[#57534E] shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-[#008000] font-bold">● LIVE</span>
+                <span>|</span>
+                <span className="truncate max-w-[140px] sm:max-w-none">{activeLiveProject.tag}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span>{activeLiveProject.fileSize}</span>
+                <span className="hidden sm:inline">| 100% Embedded App</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
 
       {/* FLOATING SPIDER CLOCK GADGET */}
       {showSpiderClock && (

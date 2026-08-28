@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KINETIC // Surreal Interactive Engineer & Web Artist Portfolio</title>
+    <meta name="description" content="An elite 3D skeuomorphic and neomorphic creative developer portfolio featuring molten rose-gold accent aesthetics, spatial audio synthesis, and live canvas smoke.">
+    <!-- Google Fonts: Outfit & Sora for a futuristic, organic look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=2">
+</head>
+<body>
+
+    <!-- SVG Filters Block (Hidden) - Used for organic molten gold outlines and noise textures -->
+    <svg style="position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; pointer-events: none;" width="1" height="1">
+        <defs>
+            <!-- Metallic Rose Gold Gradient for outlines -->
+            <linearGradient id="roseGoldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#f7d1ba" />
+                <stop offset="25%" stop-color="#b76e79" />
+                <stop offset="50%" stop-color="#8a4f5a" />
+                <stop offset="75%" stop-color="#e0a96d" />
+                <stop offset="100%" stop-color="#b76e79" />
+            </linearGradient>
+            
+            <!-- Molten glow filter -->
+            <filter id="molten-glow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feComponentTransfer in="blur" result="glow">
+                    <feFuncA type="linear" slope="2" />
+                </feComponentTransfer>
+                <feMerge>
+                    <feMergeNode in="glow" />
+                    <feMergeNode in="SourceGraphic" />
+                </feMerge>
+            </filter>
+
+            <!-- Organic liquid edge distortion filter -->
+            <filter id="liquid-distortion">
+                <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="2" result="noise" />
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="5" xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+        </defs>
+    </svg>
+
+    <!-- Main Container -->
+    <div class="dashboard-wrapper" id="main-portfolio-wrapper">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar-nav">
+            <div class="brand-header">
+                <div class="brand-logo-glow" id="brand-core-light"></div>
+                <div class="brand-text">
+                    <h2>KINETIC</h2>
+                    <span>CORE NODE</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-menu">
+                <a href="#identity" class="menu-item active" id="menu-identity">
+                    <span class="dot"></span> Identity
+                </a>
+                <a href="#workstation" class="menu-item" id="menu-workstation">
+                    <span class="dot"></span> Workstation
+                </a>
+                <a href="#projects" class="menu-item" id="menu-projects">
+                    <span class="dot"></span> Project Matrix
+                </a>
+                <a href="#telemetry" class="menu-item" id="menu-telemetry">
+                    <span class="dot"></span> Telemetry
+                </a>
+                <a href="#signals" class="menu-item" id="menu-signals">
+                    <span class="dot"></span> Signals Inbox
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="trigger-modal-btn" id="open-delete-modal-sidebar">Fracture Reality</button>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="workspace-content">
+            <header class="workspace-header">
+                <h1>Surreal Interactive Engineer</h1>
+                <p class="subtitle">A digital matrix of responsive dark slate clay, real-time spatial audio synthesis, and liquid molten code.</p>
+            </header>
+
+            <!-- SECTION 1: IDENTITY (Foundations) -->
+            <section id="identity" class="dashboard-section card-raised">
+                <div class="section-badge">01</div>
+                <h3 class="section-title">01 IDENTITY</h3>
+                
+                <div class="grid-layout cols-2">
+                    <!-- Surface Tokens Mapped to Philosophies -->
+                    <div class="panel">
+                        <h4 class="panel-title">Creative Philosophies</h4>
+                        <div class="surface-tokens-grid">
+                            <div class="surface-token-card">
+                                <div class="token-surface base-layer"></div>
+                                <span class="token-label">Tactile Design</span>
+                            </div>
+                            <div class="surface-token-card">
+                                <div class="token-surface raised-layer">
+                                    <div class="glow-edge"></div>
+                                </div>
+                                <span class="token-label">Immersive Spaces</span>
+                            </div>
+                            <div class="surface-token-card">
+                                <div class="token-surface inset-layer"></div>
+                                <span class="token-label">Fluid Interfaces</span>
+                            </div>
+                            <div class="surface-token-card">
+                                <div class="token-surface pressed-layer">
+                                    <div class="crack crack-1"></div>
+                                    <div class="crack crack-2"></div>
+                                    <div class="molten-leak"></div>
+                                </div>
+                                <span class="token-label">Skeuomorphic Art</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tech Stack Layers Mapped to Elevation -->
+                    <div class="panel">
+                        <h4 class="panel-title">Technical Stack Layers</h4>
+                        <div class="elevation-interactive-wrapper">
+                            <div class="elevation-isometric-stack" id="elevation-stack">
+                                <div class="isometric-layer layer-4" data-level="4">
+                                    <div class="layer-content">Experience (Audio/3D)</div>
+                                </div>
+                                <div class="isometric-layer layer-3" data-level="3">
+                                    <div class="layer-content">Creative Graphics (SVG/Canvas)</div>
+                                </div>
+                                <div class="isometric-layer layer-2" data-level="2">
+                                    <div class="layer-content">State Logic (Vanilla JS/APIs)</div>
+                                </div>
+                                <div class="isometric-layer layer-1" data-level="1">
+                                    <div class="layer-content">Core Web (Semantic HTML/CSS)</div>
+                                </div>
+                            </div>
+                            <div class="elevation-controls">
+                                <button class="btn-neo-small" id="raise-stack-btn">Expand Stack</button>
+                                <span class="spacing-indicator">Spacing Scale: 6px</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-layout cols-3 mt-4">
+                    <!-- Design Weights Mapped to Border -->
+                    <div class="panel">
+                        <h4 class="panel-title">Vector Stroke Weight</h4>
+                        <div class="border-rules-list">
+                            <div class="border-rule">
+                                <span class="rule-label">Micro-Lines (1px)</span>
+                                <div class="border-preview thin-line"></div>
+                            </div>
+                            <div class="border-rule">
+                                <span class="rule-label">Relay Lines (2px)</span>
+                                <div class="border-preview regular-line"></div>
+                            </div>
+                            <div class="border-rule">
+                                <span class="rule-label">Core Grids (3px)</span>
+                                <div class="border-preview medium-line"></div>
+                            </div>
+                            <div class="border-rule">
+                                <span class="rule-label">Glow Channels (4px)</span>
+                                <div class="border-preview thick-line"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Radius Scale Mapped to Capabilities -->
+                    <div class="panel">
+                        <h4 class="panel-title">Droplet Capabilities</h4>
+                        <div class="radius-scale-container">
+                            <div class="radius-droplet r-small" title="Fluid UI Layouts"><span>UI</span></div>
+                            <div class="radius-droplet r-medium" title="Performance Optimization"><span>PERF</span></div>
+                            <div class="radius-droplet r-large" title="Spatial Web Audio"><span>WAV</span></div>
+                            <div class="radius-droplet r-full" title="Skeuomorphic Vector Art"><span>SKU</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Iconography Rules -->
+                    <div class="panel">
+                        <h4 class="panel-title">Vector Iconography (1.5px Stroke)</h4>
+                        <div class="iconography-grid">
+                            <div class="icon-group">
+                                <span class="icon-label">Navigation</span>
+                                <div class="icon-preview size-14">
+                                    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                                </div>
+                            </div>
+                            <div class="icon-group">
+                                <span class="icon-label">Discovery</span>
+                                <div class="icon-preview size-18">
+                                    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                                </div>
+                            </div>
+                            <div class="icon-group">
+                                <span class="icon-label">Identity</span>
+                                <div class="icon-preview size-22">
+                                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: WORKSTATION (Controls) -->
+            <section id="workstation" class="dashboard-section card-raised mt-5">
+                <div class="section-badge">02</div>
+                <h3 class="section-title">02 WORKSTATION</h3>
+                
+                <div class="grid-layout cols-2">
+                    <!-- Workstation Controls -->
+                    <div class="panel">
+                        <h4 class="panel-title">Terminal Pings</h4>
+                        <div class="buttons-horizontal-flex">
+                            <div class="button-box">
+                                <span class="btn-state-label">Interactive Transmission</span>
+                                <button class="btn-molten-primary" id="interactive-submit-btn">PING MY NODE</button>
+                            </div>
+                            <div class="button-box">
+                                <span class="btn-state-label">Buffer Stream</span>
+                                <button class="btn-molten-pressed loading-loop" disabled>
+                                    <div class="spinner-ring"></div>
+                                    SIGNING BUFFER...
+                                </button>
+                            </div>
+                            <div class="button-box">
+                                <span class="btn-state-label">Status Offline</span>
+                                <button class="btn-molten-disabled" disabled>NODE DISCONNECTED</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transmission Form -->
+                    <div class="panel">
+                        <h4 class="panel-title">Signal Transmission Form</h4>
+                        <div class="text-fields-grid">
+                            <div class="input-container">
+                                <label for="email-address">Sender Node Address</label>
+                                <div class="input-neo-wrapper">
+                                    <input type="email" id="email-address" placeholder="enter your email..." class="input-neo">
+                                </div>
+                                <span class="input-tip">Strict validation filter active.</span>
+                            </div>
+
+                            <div class="input-container">
+                                <label for="transmission-message">Signal Message</label>
+                                <div class="input-neo-wrapper message-wrapper" style="height: 100px;">
+                                    <textarea id="transmission-message" placeholder="type your signal here..." class="input-neo" style="width:100%; height:100%; border:none; background:transparent; resize:none; padding:12px; outline:none; color:#e6ecf3; font-family:var(--font-body);"></textarea>
+                                </div>
+                            </div>
+
+                            <div class="focused-concentric-demo">
+                                <button class="btn-neo-small" id="send-signal-btn">Transmit Signal</button>
+                                <div class="focused-concentric-demo" style="gap: 12px; margin-top: 0;">
+                                    <span class="focused-label">Concentric Guard</span>
+                                    <div class="concentric-focus-ring">
+                                        <div class="concentric-inner-core"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-layout cols-3 mt-4">
+                    <!-- Engine Relays Mapped to Radio/Checkbox -->
+                    <div class="panel">
+                        <h4 class="panel-title">Engine Core Toggles</h4>
+                        <div class="selection-controls-row">
+                            <div class="selection-control-item">
+                                <span class="control-label">Molten Rails</span>
+                                <label class="checkbox-neo-container">
+                                    <input type="checkbox" checked="checked">
+                                    <span class="checkmark-neo">
+                                        <svg viewBox="0 0 24 24" class="check-icon">
+                                            <polyline points="20 6 9 17 4 12"></polyline>
+                                        </svg>
+                                    </span>
+                                </label>
+                            </div>
+                            <div class="selection-control-item">
+                                <span class="control-label">Frequency Bands</span>
+                                <label class="radio-neo-container">
+                                    <input type="radio" name="radio-demo" checked="checked">
+                                    <span class="radiomark-neo">
+                                        <span class="radiomark-dot"></span>
+                                    </span>
+                                </label>
+                                <label class="radio-neo-container">
+                                    <input type="radio" name="radio-demo">
+                                    <span class="radiomark-neo">
+                                        <span class="radiomark-dot"></span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Switch Mapped to Engine Smoke Relays -->
+                    <div class="panel relative-panel">
+                        <h4 class="panel-title">Engine Exhaust (Ignites Smoke)</h4>
+                        <div class="switch-container-box">
+                            <div class="canvas-smoke-wrapper">
+                                <!-- Smoke Canvas for Switch -->
+                                <canvas id="switch-smoke-canvas" width="220" height="150"></canvas>
+                            </div>
+                            <div class="switch-hardware-housing">
+                                <span class="switch-text-label">COOLDOWN</span>
+                                <label class="switch-neo-toggle">
+                                    <input type="checkbox" id="smoke-switch-trigger">
+                                    <span class="switch-slider-neo">
+                                        <span class="switch-lever"></span>
+                                    </span>
+                                </label>
+                                <span class="switch-text-label">IGNITE</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Volume Slider Mapped to Space Synth Controller -->
+                    <div class="panel">
+                        <h4 class="panel-title">Cosmic Audio Pad Volume</h4>
+                        <div class="slider-wrapper">
+                            <div class="slider-display-percentage" id="slider-percentage-val">0%</div>
+                            <div class="slider-trough-container">
+                                <div class="slider-ticks">
+                                    <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+                                </div>
+                                <div class="slider-track-neo" id="slider-track-bg">
+                                    <div class="slider-fill-molten" id="slider-fill-level" style="width: 0%;"></div>
+                                    <div class="slider-thumb-droplet" id="slider-thumb-drag" style="left: 0%;">
+                                        <div class="thumb-molten-core"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="slider-label-indicators">
+                                <span>55Hz</span>
+                                <span class="center-label">SYNTH DRONE</span>
+                                <span>600Hz</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 3: PROJECT MATRIX (Navigation) -->
+            <section id="projects" class="dashboard-section card-raised mt-5">
+                <div class="section-badge">03</div>
+                <h3 class="section-title">03 PROJECT MATRIX</h3>
+                
+                <div class="grid-layout cols-2">
+                    <!-- Project Categorized Tabs -->
+                    <div class="panel">
+                        <h4 class="panel-title">Project Categories (Filter Archive Below)</h4>
+                        <div class="tabs-neo-bar" id="tabs-bar-container">
+                            <!-- Sliding Glider indicator -->
+                            <div class="tab-glider-molten" id="tab-glow-glider"></div>
+                            
+                            <button class="tab-neo-item active" data-tab="all">ALL WORK</button>
+                            <button class="tab-neo-item" data-tab="creative">CREATIVE UI</button>
+                            <button class="tab-neo-item" data-tab="audio">WEB AUDIO</button>
+                            <div class="tab-spacing-label">10px <br> 14px</div>
+                        </div>
+                    </div>
+
+                    <!-- Development Lifecycle Step Process -->
+                    <div class="panel">
+                        <h4 class="panel-title">Development Lifecycle</h4>
+                        <div class="step-process-visualizer">
+                            <div class="step-line-bg"></div>
+                            <div class="step-line-active" style="width: 66%;"></div>
+                            <div class="step-nodes-container">
+                                <div class="step-node completed" title="Step 1: Initiation">
+                                    <div class="node-dot"></div>
+                                </div>
+                                <div class="step-node completed" title="Step 2: Ideation">
+                                    <div class="node-dot"></div>
+                                </div>
+                                <div class="step-node active-glow cracked-smoke" title="Step 3: Synthesis" id="smoke-step-node">
+                                    <div class="node-dot-large">
+                                        <div class="cracked-core"></div>
+                                        <canvas id="step-smoke-canvas" width="100" height="100"></canvas>
+                                    </div>
+                                    <div class="step-floating-tag">Confirm details below</div>
+                                </div>
+                                <div class="step-node pending" title="Step 4: Deployment">
+                                    <div class="node-dot"></div>
+                                </div>
+                            </div>
+                            <div class="step-title-display">STEP 3: SYNTHESIS</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Compact Table Mapped to Case Studies Archive -->
+                <div class="panel mt-4">
+                    <h4 class="panel-title">Case Studies Archive</h4>
+                    <div class="table-container-neo">
+                        <table class="table-neo">
+                            <thead>
+                                <tr>
+                                    <th>PROJECT NAME <span class="sort-arrows">↕</span></th>
+                                    <th>DEPLOYMENT YEAR <span class="sort-arrows">↕</span></th>
+                                    <th class="status-th">ENGINE CORE <span class="sort-arrows">↕</span></th>
+                                    <th class="actions-th">
+                                        <span class="px-label">SYSTEM <br> DIAGNOSTICS</span>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Loaded dynamically via script.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="grid-layout cols-2 mt-4">
+                    <!-- Project Breadcrumbs -->
+                    <div class="panel">
+                        <h4 class="panel-title">Active Directory</h4>
+                        <div class="breadcrumbs-neo-wrapper">
+                            <div class="breadcrumb-trail">
+                                <span class="crumb">Core</span>
+                                <span class="crumb-connector"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
+                                <span class="crumb">Repositories</span>
+                                <span class="crumb-connector"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
+                                <span class="crumb">Skeuomorphic</span>
+                                <span class="crumb-connector"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></span>
+                                <span class="crumb current-page">Kinetic-Synth</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Case Study Pagination -->
+                    <div class="panel">
+                        <h4 class="panel-title">Pagination (droplets)</h4>
+                        <div class="pagination-neo-flex">
+                            <button class="pag-btn prev-next">PREV</button>
+                            <button class="pag-btn num-btn">1</button>
+                            <button class="pag-btn num-btn active-droplet">2</button>
+                            <button class="pag-btn num-btn">3</button>
+                            <button class="pag-btn prev-next">NEXT</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 4: TELEMETRY (Data Display) -->
+            <section id="telemetry" class="dashboard-section card-raised mt-5">
+                <div class="section-badge">04</div>
+                <h3 class="section-title">04 TELEMETRY</h3>
+                
+                <div class="grid-layout cols-3">
+                    <!-- Weekly Coding Velocity -->
+                    <div class="panel">
+                        <h4 class="panel-title">Productivity Telemetry</h4>
+                        <div class="data-card-neo">
+                            <div class="card-header">
+                                <span class="card-title">WEEKLY VELOCITY</span>
+                                <span class="card-status-dot"></span>
+                            </div>
+                            <div class="graph-svg-container">
+                                <svg class="sparkline-svg" viewBox="0 0 200 80">
+                                    <defs>
+                                        <!-- Gradient under sparkline -->
+                                        <linearGradient id="chartGlow" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0%" stop-color="#b76e79" stop-opacity="0.4"/>
+                                            <stop offset="100%" stop-color="#20252b" stop-opacity="0.0"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <path d="M 0,60 Q 25,25 50,45 T 100,20 T 150,55 T 200,30 L 200,80 L 0,80 Z" fill="url(#chartGlow)" />
+                                    <path d="M 0,60 Q 25,25 50,45 T 100,20 T 150,55 T 200,30" fill="none" stroke="url(#roseGoldGradient)" stroke-width="2.5" filter="url(#molten-glow)" />
+                                    <!-- Sparkline node dots -->
+                                    <circle cx="100" cy="20" r="4" fill="#f7d1ba" filter="url(#molten-glow)"/>
+                                </svg>
+                            </div>
+                            <div class="card-footer">
+                                <span class="footer-meta">Activity: Active</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Active Product Relays -->
+                    <div class="panel">
+                        <h4 class="panel-title">Active Core Relays</h4>
+                        <div class="list-neo-group">
+                            <div class="list-item-neo">
+                                <div class="item-details">
+                                    <span class="item-title">Skeuomorphic Synth</span>
+                                    <span class="item-subtitle">Interactive oscillator keyboard</span>
+                                </div>
+                                <div class="badge-neo-new">LIVE</div>
+                            </div>
+                            <div class="list-item-neo">
+                                <div class="item-details">
+                                    <span class="item-title">Orion Canvas Engine</span>
+                                    <span class="item-subtitle">High-fidelity particle system</span>
+                                </div>
+                                <div class="badge-neo-new">LIVE</div>
+                            </div>
+                            <div class="list-item-neo">
+                                <div class="item-details">
+                                    <span class="item-title">Displacement WebGL</span>
+                                    <span class="item-subtitle">Turbulent displacement maps</span>
+                                </div>
+                                <div class="badge-neo-new">LIVE</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Swirling Marble Avatars -->
+                    <div class="panel">
+                        <h4 class="panel-title">Identity Spheres</h4>
+                        <div class="avatar-tooltip-flex">
+                            <div class="avatars-group">
+                                <div class="avatar-neo-sphere" title="Interactive System A">
+                                    <svg viewBox="0 0 100 100" class="marble-swirl">
+                                        <defs>
+                                            <radialGradient id="marbleGrad" cx="50%" cy="50%" r="50%">
+                                                <stop offset="0%" stop-color="#f7d1ba" />
+                                                <stop offset="40%" stop-color="#b76e79" />
+                                                <stop offset="85%" stop-color="#2a3038" />
+                                                <stop offset="100%" stop-color="#14171c" />
+                                            </radialGradient>
+                                        </defs>
+                                        <circle cx="50" cy="50" r="48" fill="url(#marbleGrad)" />
+                                        <path d="M 50,50 C 70,30 80,70 50,90 C 20,70 30,30 50,50 Z" fill="none" stroke="#e0a96d" stroke-width="1.5" opacity="0.6" filter="url(#molten-glow)" />
+                                        <path d="M 50,50 C 30,30 20,70 50,90 C 80,70 70,30 50,50 Z" fill="none" stroke="#b76e79" stroke-width="1" opacity="0.4" />
+                                    </svg>
+                                </div>
+                                <div class="avatar-neo-sphere" title="Interactive System B">
+                                    <svg viewBox="0 0 100 100" class="marble-swirl alt-swirl">
+                                        <circle cx="50" cy="50" r="48" fill="url(#marbleGrad)" />
+                                        <path d="M 50,50 Q 80,10 50,90 T 50,50 Z" fill="none" stroke="#e0a96d" stroke-width="2" opacity="0.7" filter="url(#molten-glow)" />
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <div class="tooltip-wrapper-interactive">
+                                <span class="spacing-indicator">Spacing Scale: 6px <br> 10px</span>
+                                <div class="tooltip-bubble-neo">
+                                    Hover spheres to spin
+                                    <div class="tooltip-arrow-neo"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 5: SIGNALS INBOX (Feedback) -->
+            <section id="signals" class="dashboard-section card-raised mt-5">
+                <div class="section-badge">05</div>
+                <h3 class="section-title">05 SIGNALS INBOX</h3>
+                
+                <div class="grid-layout cols-2">
+                    <!-- Easter Egg Modal Summoner -->
+                    <div class="panel">
+                        <h4 class="panel-title">Reality Fracture</h4>
+                        <div class="modal-dummy-card">
+                            <p class="modal-card-explainer">Triggering the dialogue summons a heavy cracked stone tablet from 3D space. Fracturing the matrix destabilizes the portfolio visual color variables and shakes the interface.</p>
+                            <button class="btn-molten-primary destructive-color" id="trigger-delete-modal-btn">SUMMON FRACTURE DIALOGUE</button>
+                        </div>
+                    </div>
+
+                    <!-- Contact Signal Logs (Toasts) -->
+                    <div class="panel">
+                        <h4 class="panel-title">Encrypted Inbox Feeds</h4>
+                        <div class="toast-stack-neo">
+                            <div class="toast-neo success">
+                                <span class="toast-indicator"></span>
+                                <div class="toast-msg"><strong>Relay:</strong> Portfolios loaded from persistent local indexes.</div>
+                            </div>
+                            <div class="toast-neo warning">
+                                <span class="toast-indicator"></span>
+                                <div class="toast-msg"><strong>Warn:</strong> Spatial Audio Synth requires click interaction.</div>
+                            </div>
+                            <div class="toast-neo error">
+                                <span class="toast-indicator"></span>
+                                <div class="toast-msg"><strong>Fracture:</strong> Reality metrics stabilized. Accents active.</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-layout cols-3 mt-4">
+                    <!-- Progress Bar & Gear Spinner -->
+                    <div class="panel">
+                        <h4 class="panel-title">Energy Capacity & Spinner</h4>
+                        <div class="progress-spinner-container">
+                            <div class="linear-progress-neo">
+                                <span class="progress-text">Core stability: <span id="progress-val-label">60%</span></span>
+                                <div class="progress-channel-neo">
+                                    <div class="progress-fill-bubbling" id="interactive-progress-bar" style="width: 60%;"></div>
+                                </div>
+                            </div>
+
+                            <div class="spinner-box">
+                                <span class="spinner-label">Relay Core Vortex</span>
+                                <div class="molten-spinner-vortex">
+                                    <svg viewBox="0 0 100 100" class="spinner-svg">
+                                        <circle cx="50" cy="50" r="40" fill="none" stroke="url(#roseGoldGradient)" stroke-width="6" stroke-dasharray="180 80" filter="url(#molten-glow)"/>
+                                    </svg>
+                                    <div class="spinner-inner-gears">
+                                        <svg viewBox="0 0 24 24" class="gear-vector"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Spating Gear Slider Channel -->
+                    <div class="panel">
+                        <h4 class="panel-title">Interactive Gear Channel</h4>
+                        <div class="spating-channel-neo">
+                            <span class="spating-label">SPATING</span>
+                            <div class="spating-trough">
+                                <div class="spating-liquid-flow"></div>
+                                <div class="spating-gear-thumb">
+                                    <svg viewBox="0 0 24 24" class="spating-gear-svg"><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="skeleton-rows-container mt-3">
+                            <span class="panel-subtitle">Skeleton Rows</span>
+                            <div class="skeleton-row-neo"></div>
+                            <div class="skeleton-row-neo delay-1"></div>
+                            <div class="skeleton-row-neo delay-2"></div>
+                        </div>
+                    </div>
+
+                    <!-- Lost in Orbit Inbox Empty State -->
+                    <div class="panel">
+                        <h4 class="panel-title">Signals Inbox Empty State</h4>
+                        <div class="empty-state-card-neo">
+                            <div class="empty-state-canvas-illustration">
+                                <!-- Sharp Inline SVG of Astronaut on Moon -->
+                                <svg viewBox="0 0 200 120" class="astronaut-moon-vector">
+                                    <defs>
+                                        <radialGradient id="moonGrad" cx="50%" cy="50%" r="50%">
+                                            <stop offset="0%" stop-color="#2a3038" />
+                                            <stop offset="100%" stop-color="#1c2026" />
+                                        </radialGradient>
+                                    </defs>
+                                    <!-- Moon Surface Craters -->
+                                    <path d="M 0,100 Q 50,85 100,95 T 200,90 L 200,120 L 0,120 Z" fill="url(#moonGrad)" stroke="#2b323b" stroke-width="1" />
+                                    <circle cx="40" cy="105" r="8" fill="#14171c" stroke="#252a33" stroke-width="1"/>
+                                    <circle cx="120" cy="100" r="12" fill="#14171c" stroke="#252a33" stroke-width="1"/>
+                                    <circle cx="150" cy="110" r="6" fill="#14171c" stroke="#252a33" stroke-width="1"/>
+                                    
+                                    <!-- Tiny Stars -->
+                                    <circle cx="30" cy="30" r="0.8" fill="#f7d1ba" opacity="0.6"/>
+                                    <circle cx="70" cy="15" r="1.2" fill="#f7d1ba" opacity="0.8" filter="url(#molten-glow)"/>
+                                    <circle cx="160" cy="40" r="0.8" fill="#f7d1ba" opacity="0.5"/>
+                                    
+                                    <!-- Earth/Planet in distance -->
+                                    <circle cx="150" cy="25" r="14" fill="#252a33" stroke="#b76e79" stroke-width="1" filter="url(#molten-glow)" opacity="0.8"/>
+                                    
+                                    <!-- Astronaut Silhouette -->
+                                    <g transform="translate(85, 60)" stroke="#e0a96d" stroke-width="1.5" fill="none">
+                                        <!-- Helmet -->
+                                        <circle cx="15" cy="10" r="8" fill="#1e2329" stroke="url(#roseGoldGradient)" filter="url(#molten-glow)"/>
+                                        <path d="M 10,10 Q 15,6 20,10" stroke="#f7d1ba" stroke-width="1" opacity="0.7" />
+                                        <!-- Body Suit -->
+                                        <rect x="8" y="18" width="14" height="15" rx="3" fill="#1e2329"/>
+                                        <!-- Arms -->
+                                        <path d="M 6,20 Q 2,25 6,30" />
+                                        <path d="M 24,20 Q 28,25 24,30" />
+                                        <!-- Legs -->
+                                        <path d="M 10,33 L 8,42" />
+                                        <path d="M 20,33 L 22,42" />
+                                        <!-- Oxygen Pack -->
+                                        <rect x="4" y="20" width="4" height="10" rx="1" fill="#14171c" stroke="#2a3038" stroke-width="1"/>
+                                    </g>
+                                </svg>
+                            </div>
+                            <span class="empty-state-title">No Inbox Relays Synced</span>
+                            <button class="btn-molten-primary-droplet" id="create-new-empty-btn">SYNC NEW SIGNAL</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- HEAVY STONE CRACKED MODAL CONFIRMATION DIALOGUE (OVERLAY) -->
+    <div class="modal-overlay-neo" id="delete-modal-overlay">
+        <!-- Canvas for Volumetric Modal Smoke -->
+        <canvas id="modal-smoke-canvas" class="modal-smoke-bg"></canvas>
+        
+        <div class="modal-tablet-neo" id="modal-tablet-container">
+            <!-- Structural Cracks Leaking Gold -->
+            <div class="modal-tablet-crack crack-left"></div>
+            <div class="modal-tablet-crack crack-right"></div>
+            <div class="modal-tablet-crack crack-bottom"></div>
+            <div class="modal-tablet-glow-inner"></div>
+
+            <div class="modal-tablet-content">
+                <div class="modal-icon-alert">
+                    <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <h3 class="modal-headline" id="modal-title-label">FRACTURE REALITY MATRIX?</h3>
+                <p class="modal-body-text" id="modal-body-desc">This action is highly volatile. Fracturing the matrix destabilizes the portfolio visual color variables, shifting accent light frequencies from Rose Gold to Crimson and shaking the interface.</p>
+                
+                <div class="modal-actions-neo">
+                    <button class="modal-btn-neo cancel" id="close-delete-modal-btn">STABILIZE</button>
+                    <button class="modal-btn-neo delete-danger" id="confirm-delete-modal-btn">FRACTURE</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js?v=2"></script>
+</body>
+</html>

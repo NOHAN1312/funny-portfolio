@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Immersive 3D Experience</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700;800&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="./assets/index-DdcRaLds.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-CIqwmajA.css">
+</head>
+
+<body>
+    <!-- Preloader Screen -->
+    <div id="loader">
+        <div class="loader-content">
+            <h1 class="loader-title">HOCO.</h1>
+            <div class="loader-bar-container">
+                <div id="loader-bar"></div>
+            </div>
+            <span id="loader-percentage">0%</span>
+        </div>
+    </div>
+
+    <!-- WebGL Canvas Background -->
+    <canvas id="bg"></canvas>
+
+    <!-- UI Overlay -->
+    <main class="overlay">
+        <header>
+            <div class="logo">HOCO.</div>
+            <nav>
+                <a href="#overview">Overview</a>
+                <a href="#features">Features</a>
+                <a href="#specs">Specs</a>
+                <a href="#buy-now">Buy Now</a>
+            </nav>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="hero-content" id="overview">
+            <h1>HOCO W35<br>Air</h1>
+            <p>Premium metal design. 40 hours playback. Unstoppable sound.</p>
+            <div class="scroll-indicator">
+                <span>Scroll to Explore</span>
+                <div class="line"></div>
+            </div>
+        </section>
+
+        <!-- Product Details / Features Section -->
+        <section class="details" id="features">
+            <div class="feature-block" id="feature-1">
+                <h2>40 Hours Playtime</h2>
+                <p>Equipped with a massive 400mAh battery, the W35 ensures your music never stops. Enjoy almost two days
+                    of continuous playback on a single charge.</p>
+            </div>
+
+            <div class="feature-block right" id="feature-2">
+                <h2>Precision Audio</h2>
+                <p>40mm dynamic drivers deliver deep bass and crystal clear highs. Experience every note exactly as the
+                    artist intended.</p>
+            </div>
+
+            <div class="feature-block" id="feature-3">
+                <h2>Bluetooth 5.3</h2>
+                <p>Seamless connectivity with ultra-low latency. Connect to your devices instantly and stay connected
+                    within a 10m range.</p>
+            </div>
+
+            <!-- Specs Grid Section -->
+            <div class="specs-grid" id="specs">
+                <div class="spec-card">
+                    <h3>Driver</h3>
+                    <p>40mm Dynamic</p>
+                </div>
+                <div class="spec-card">
+                    <h3>Battery</h3>
+                    <p>400mAh / 40h</p>
+                </div>
+                <div class="spec-card">
+                    <h3>Weight</h3>
+                    <p>193g</p>
+                </div>
+                <div class="spec-card">
+                    <h3>Material</h3>
+                    <p>Metal + ABS</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer / CTA Section -->
+        <footer id="buy-now">
+            <h2>Ready to Upgrade?</h2>
+            <button class="cta-button">Buy Now - $29.99</button>
+        </footer>
+    </main>
+
+    <!-- Color Picker Controls -->
+    <div class="color-picker">
+        <button class="color-btn active" data-color="black" style="background-color: #111;"
+            title="Premium Black"></button>
+        <button class="color-btn" data-color="silver" style="background-color: #e0e0e0;"
+            title="Sleek Silver"></button>
+    </div>
+
+</body>
+
+</html>
