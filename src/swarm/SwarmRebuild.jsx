@@ -35,6 +35,12 @@ const SPEEDS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
 const DEFAULT_SPEED_IX = 3; // 1x
 const COLORS = ['#F24E1E', '#A259FF', '#1ABCFE', '#0ACF83'];
 
+// Speed fix (2026-11-07): the 1x base pacing was so slow that a full
+// build took ~6 minutes on the live site (hero ~20s, ~2min stall at
+// 6/7). All waits below are divided by the speed stepper, so -/+
+// still scales everything. Hard cap per section: SECTION_BUDGET_MS.
+const SECTION_BUDGET_MS = 4000;
+
 const SECTIONS = [
   { id: 'nav', label: 'ন্যাভবার' },
   { id: 'hero', label: 'হিরো' },
@@ -85,6 +91,7 @@ export default function SwarmRebuild() {
   const tokenRef = useRef(0);
   const builtRef = useRef(new Set());
   const buildingRef = useRef(new Set());
+  const skipRef = useRef(new Set()); // sections released early (timeout / catch-up)
   const queueRef = useRef(Promise.resolve());
   const tourRef = useRef(false);
   const phaseRef = useRef('building');
@@ -146,7 +153,7 @@ export default function SwarmRebuild() {
     c.tx = clamp(x, 8, window.innerWidth - 8);
     c.ty = clamp(y, 8, window.innerHeight - 8);
     const dist = Math.hypot(c.tx - c.x, c.ty - c.y);
-    const dur = clamp(dist / 1.1, 200, 950) / speedRef.current;
+    const dur = clamp(dist / 2.2, 80, 320) / speedRef.current;
     await sleep(dur);
   };
 
@@ -173,7 +180,7 @@ export default function SwarmRebuild() {
         { width: '4px', height: '4px' },
         { width: `${rect.width}px`, height: `${rect.height}px` },
       ],
-      { duration: 360 / speedRef.current, easing: 'ease-out', fill: 'forwards' },
+      { duration: 160 / speedRef.current, easing: 'ease-out', fill: 'forwards' },
     );
   };
 
@@ -189,19 +196,19 @@ export default function SwarmRebuild() {
     g.style.top = `${rect.top - 6}px`;
     g.style.width = '0px';
     g.animate([{ width: '0px' }, { width: `${rect.width + 48}px` }], {
-      duration: 380 / speedRef.current,
+      duration: 180 / speedRef.current,
       easing: 'ease-out',
       fill: 'forwards',
     });
-    await sleep(380 / speedRef.current);
+    await sleep(180 / speedRef.current);
     sfx().snap(rect.left + rect.width / 2, window.innerWidth);
-    await sleep(160 / speedRef.current);
+    await sleep(60 / speedRef.current);
     g.style.display = 'none';
   };
 
   const typeAcross = async (cursorIx, rect, text) => {
     const caret = caretRef.current;
-    const steps = Math.min(Math.max(text ? text.length : 12, 8), 26);
+    const steps = Math.min(Math.max(text ? text.length : 12, 8), 16);
     const c = cursorsRef.current[cursorIx];
     if (!c) return;
     setCursorShape(cursorIx, 'ibeam');
@@ -218,7 +225,7 @@ export default function SwarmRebuild() {
       const ch = text ? text[Math.floor((k / steps) * text.length)] : '';
       sfx().key(x, window.innerWidth, `type-${cursorIx}`, 1, ch === ' ' ? 1 : 0);
       if (k % 6 === 5) sfx().grow(Math.floor(k / 6), x, window.innerWidth);
-      await sleep(34 / speedRef.current);
+      await sleep(12 / speedRef.current);
     }
     if (caret) caret.style.display = 'none';
     setCursorShape(cursorIx, 'arrow');
@@ -231,7 +238,7 @@ export default function SwarmRebuild() {
     if (rect.width > 0 && rect.height > 0) {
       el.animate(
         [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)' }],
-        { duration: 550 / speedRef.current, easing: 'ease-out' },
+        { duration: 300 / speedRef.current, easing: 'ease-out' },
       );
     }
     if (kind) {
@@ -245,7 +252,7 @@ export default function SwarmRebuild() {
     await moveCursorTo(cursorIx, rect.left + 8, rect.top + 8, 'cross');
     sfx().press(rect.left, window.innerWidth);
     showDrawBox(rect);
-    await sleep(300 / speedRef.current);
+    await sleep(120 / speedRef.current);
     hideDrawBox();
     if (isDup && prevRect) {
       const sp = spacingRef.current;
@@ -254,17 +261,75 @@ export default function SwarmRebuild() {
         sp.style.left = `${rect.left}px`;
         sp.style.top = `${Math.max(8, rect.top - 26)}px`;
         sp.textContent = `↔ ${Math.round(Math.abs(rect.top - prevRect.bottom))}px`;
-        await sleep(220 / speedRef.current);
+        await sleep(100 / speedRef.current);
         sp.style.display = 'none';
       }
       sfx().place('dup', rect.left + rect.width / 2, rect.top, rect.width, rect.height, window.innerWidth, window.innerHeight);
     }
     releaseEl(el, kind === 'image' ? 'image' : 'rect');
-    await sleep(150 / speedRef.current);
+    await sleep(60 / speedRef.current);
+  };
+
+  // Items drawn one-by-one inside a section (victims/projects/process/skills).
+  // NOTE: skills uses a direct-child selector — `#skills .grid .win98-inset`
+  // also matched the 4 progress bars nested inside the 4 skill cards
+  // (App.jsx), so skills used to draw 8 items instead of 4.
+  const itemSelectorFor = (section) => {
+    if (section.id === 'projects') return '#projects .win98-window';
+    if (section.id === 'victims') return '#victims .win98-window';
+    if (section.id === 'process') return '#process .win98-box';
+    if (section.id === 'skills') return '#skills .grid > .win98-inset';
+    return null;
+  };
+
+  const sectionItems = (section) => {
+    const sel = itemSelectorFor(section);
+    return sel ? Array.from(document.querySelectorAll(sel)) : [];
+  };
+
+  // Mark a whole section (and every item inside it) built at once, with
+  // no choreography. Used for the hard timeout and for catching up when
+  // the visitor has already scrolled past a section.
+  const releaseSectionNow = (section) => {
+    const el =
+      section.id === 'nav' ? document.querySelector('nav') : document.getElementById(section.id);
+    if (el) {
+      sectionItems(section).forEach((item) => {
+        item.dataset.swarmBuilt = '1';
+      });
+      el.dataset.swarmBuilt = '1';
+    }
+    skipRef.current.add(section.id);
+    builtRef.current.add(section.id);
+    buildingRef.current.delete(section.id);
+    setBuiltCount(builtRef.current.size);
+    if (builtRef.current.size >= SECTIONS.length && phaseRef.current === 'building') {
+      setPhase('done');
+      setCurrentLabel('সব তৈরি!');
+      sfx().finale();
+    }
+  };
+
+  // Earlier sections the visitor has scrolled past: release them instantly
+  // so the section actually on screen can build right away instead of
+  // waiting behind a queue of unseen sections.
+  const releaseEarlierSections = (section) => {
+    const ix = SECTIONS.findIndex((s) => s.id === section.id);
+    for (let i = 0; i < ix; i++) {
+      const earlier = SECTIONS[i];
+      if (!builtRef.current.has(earlier.id)) releaseSectionNow(earlier);
+    }
   };
 
   const buildSection = async (section) => {
     const token = tokenRef.current;
+    const startedAt = Date.now();
+    // Stop choreographing if this run was cancelled, released early, or
+    // ran past the hard per-section budget.
+    const aborted = () => tokenRef.current !== token || skipRef.current.has(section.id);
+    const overBudget = () => Date.now() - startedAt > SECTION_BUDGET_MS;
+    const finishFast = () => releaseSectionNow(section);
+    if (skipRef.current.has(section.id)) return;
     const el =
       section.id === 'nav' ? document.querySelector('nav') : document.getElementById(section.id);
     if (!el) {
@@ -280,11 +345,12 @@ export default function SwarmRebuild() {
 
     // 1. Draw the section box with a crosshair + live W x H badge.
     await moveCursorTo(lead, rect.left + 10, rect.top + 10, 'cross');
-    if (tokenRef.current !== token) return;
+    if (aborted()) return;
+    if (overBudget()) return finishFast();
     hoverOthers(lead, rect);
     sfx().press(rect.left, window.innerWidth);
     showDrawBox(rect);
-    await sleep(360 / speedRef.current);
+    await sleep(140 / speedRef.current);
     hideDrawBox();
 
     // 2. Ruler guide + typing across the heading.
@@ -293,31 +359,28 @@ export default function SwarmRebuild() {
       const hRect = heading.getBoundingClientRect();
       if (hRect.width > 0) {
         await showGuide(hRect);
-        if (tokenRef.current !== token) return;
+        if (aborted()) return;
+        if (overBudget()) return finishFast();
         await typeAcross(lead, hRect, heading.textContent || '');
+        if (aborted()) return;
+        if (overBudget()) return finishFast();
       }
     }
 
     // 3. Build the repeated items inside, one by one.
-    let itemSelector = null;
-    if (section.id === 'projects') itemSelector = '#projects .win98-window';
-    else if (section.id === 'victims') itemSelector = '#victims .win98-window';
-    else if (section.id === 'process') itemSelector = '#process .win98-box';
-    else if (section.id === 'skills') itemSelector = '#skills .grid .win98-inset';
-    if (itemSelector) {
-      const items = Array.from(document.querySelectorAll(itemSelector));
-      let prevRect = null;
-      for (let i = 0; i < items.length; i++) {
-        if (tokenRef.current !== token) return;
-        const item = items[i];
-        if (item.dataset.swarmBuilt) {
-          prevRect = item.getBoundingClientRect();
-          continue;
-        }
-        const cursorIx = (lead + i + 1) % COLORS.length;
-        await drawItem(cursorIx, item, 'rect', i > 0, prevRect);
+    const items = sectionItems(section);
+    let prevRect = null;
+    for (let i = 0; i < items.length; i++) {
+      if (aborted()) return;
+      if (overBudget()) return finishFast();
+      const item = items[i];
+      if (item.dataset.swarmBuilt) {
         prevRect = item.getBoundingClientRect();
+        continue;
       }
+      const cursorIx = (lead + i + 1) % COLORS.length;
+      await drawItem(cursorIx, item, 'rect', i > 0, prevRect);
+      prevRect = item.getBoundingClientRect();
     }
 
     // Contact form: draw each field in order, but never type into it —
@@ -325,7 +388,8 @@ export default function SwarmRebuild() {
     if (section.id === 'contact') {
       const fields = Array.from(el.querySelectorAll('form input, form textarea, form button'));
       for (let i = 0; i < fields.length; i++) {
-        if (tokenRef.current !== token) return;
+        if (aborted()) return;
+        if (overBudget()) return finishFast();
         await drawItem((lead + i) % COLORS.length, fields[i], 'rect', false, null);
       }
     }
@@ -344,7 +408,7 @@ export default function SwarmRebuild() {
     builtRef.current.add(section.id);
     buildingRef.current.delete(section.id);
     setBuiltCount(builtRef.current.size);
-    await sleep(150 / speedRef.current);
+    await sleep(60 / speedRef.current);
 
     if (builtRef.current.size >= SECTIONS.length) {
       setPhase('done');
@@ -354,7 +418,7 @@ export default function SwarmRebuild() {
   };
 
   const enqueueBuild = (section) => {
-    if (builtRef.current.has(section.id) || buildingRef.current.has(section.id)) return;
+    if (builtRef.current.has(section.id) || buildingRef.current.has(section.id)) return queueRef.current;
     buildingRef.current.add(section.id);
     queueRef.current = queueRef.current
       .then(() => {
@@ -362,6 +426,7 @@ export default function SwarmRebuild() {
         return buildSection(section);
       })
       .catch(() => {});
+    return queueRef.current;
   };
 
   const markAllBuilt = () => {
@@ -369,7 +434,7 @@ export default function SwarmRebuild() {
       el.dataset.swarmBuilt = '1';
     });
     document
-      .querySelectorAll('#projects .win98-window, #victims .win98-window, #skills .grid .win98-inset, #process .win98-box')
+      .querySelectorAll('#projects .win98-window, #victims .win98-window, #skills .grid > .win98-inset, #process .win98-box')
       .forEach((el) => {
         el.dataset.swarmBuilt = '1';
       });
@@ -397,6 +462,7 @@ export default function SwarmRebuild() {
       .forEach((el) => delete el.dataset.swarmBuilt);
     builtRef.current = new Set();
     buildingRef.current = new Set();
+    skipRef.current = new Set();
     setBuiltCount(0);
     setPhase('building');
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -427,21 +493,24 @@ export default function SwarmRebuild() {
         c.tx = cx + Math.cos(a) * r;
         c.ty = cy + Math.sin(a) * r * 0.6;
       });
-      if (performance.now() - orbitStart < 1200) requestAnimationFrame(orbit);
+      if (performance.now() - orbitStart < 700) requestAnimationFrame(orbit);
     };
     orbit();
-    await sleep(isReplay ? 700 : 1300);
+    await sleep(isReplay ? 400 : 700);
     if (tokenRef.current !== token) return;
     sfx().start();
-    await enqueueBuild(SECTIONS[0]);
-    await enqueueBuild(SECTIONS[1]);
-    // Remaining sections build only when they truly enter the viewport.
+    // Observe first, so a fast scroll during the hero build is not missed.
+    // A section that enters view jumps the queue: anything earlier that
+    // the visitor already scrolled past is released instantly, then the
+    // section on screen builds right away.
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
           const sec = SECTIONS.find((s) => s.id === entry.target.id);
-          if (sec) enqueueBuild(sec);
+          if (!sec) return;
+          releaseEarlierSections(sec);
+          enqueueBuild(sec);
         });
       },
       { threshold: 0.15, rootMargin: '0px 0px -10% 0px' },
@@ -451,6 +520,8 @@ export default function SwarmRebuild() {
       const el = document.getElementById(sec.id);
       if (el) observer.observe(el);
     });
+    enqueueBuild(SECTIONS[0]);
+    enqueueBuild(SECTIONS[1]);
     // Mobile: gentle auto-tour after the hero is built.
     if (window.innerWidth < 720) {
       const waitHero = setInterval(() => {
@@ -483,13 +554,13 @@ export default function SwarmRebuild() {
       const started = Date.now();
       while (
         !builtRef.current.has(next.id) &&
-        Date.now() - started < 20000 &&
+        Date.now() - started < 6000 &&
         tourRef.current &&
         tokenRef.current === token
       ) {
         await sleep(200);
       }
-      await sleep(500 / speedRef.current);
+      await sleep(200 / speedRef.current);
     }
     tourRef.current = false;
     setTourOn(false);
@@ -559,11 +630,26 @@ export default function SwarmRebuild() {
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('wheel', onWheel, { passive: true });
+    // Victims 4-11 only render after "load more" is clicked: if the
+    // victims section is already built, new cards must show at once
+    // instead of arriving ghost-hidden.
+    let victimsObserver = null;
+    const victimsEl = document.getElementById('victims');
+    if (victimsEl && window.MutationObserver) {
+      victimsObserver = new MutationObserver(() => {
+        if (!builtRef.current.has('victims')) return;
+        victimsEl.querySelectorAll('.win98-window:not([data-swarm-built])').forEach((node) => {
+          node.dataset.swarmBuilt = '1';
+        });
+      });
+      victimsObserver.observe(victimsEl, { childList: true, subtree: true });
+    }
     void startRun(false);
     return () => {
       tokenRef.current = -1;
       cancelAnimationFrame(rafRef.current);
       if (observerRef.current) observerRef.current.disconnect();
+      if (victimsObserver) victimsObserver.disconnect();
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerdown', onUnlock);
       window.removeEventListener('keydown', onKey);

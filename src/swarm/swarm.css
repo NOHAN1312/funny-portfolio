@@ -19,7 +19,7 @@ html.swarm-active #victims .win98-window:not([data-swarm-built]) {
   opacity: 0 !important;
 }
 
-html.swarm-active #skills .grid .win98-inset:not([data-swarm-built]),
+html.swarm-active #skills .grid > .win98-inset:not([data-swarm-built]),
 html.swarm-active #process .win98-box:not([data-swarm-built]) {
   opacity: 0 !important;
 }
