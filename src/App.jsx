@@ -6,6 +6,7 @@ import ParticleText from './ParticleText';
 import AuthModal from './AuthModal';
 import DotNavigation from './DotNavigation';
 import SpiderClock from './SpiderClock';
+import SwarmRebuild from './swarm/SwarmRebuild';
 
 function App() {
   const [showAllVictims, setShowAllVictims] = useState(false);
@@ -461,6 +462,7 @@ function App() {
 
   return (
     <div className="min-h-screen text-[#1C1917] font-sans selection:bg-[#000080] selection:text-white overflow-x-hidden relative pb-16">
+      <SwarmRebuild />
       <Dragon opacity={dragonOpacity} size={dragonSize} />
       
       {/* Toast Notification for Win98 Actions */}
@@ -831,7 +833,7 @@ function App() {
 
         {/* SKILLS AS WIN98 SETUP PROGRESS */}
         {!windows.skills.closed && (
-          <section className={`reveal reveal-up transition-all duration-300 ${windows.skills.max ? 'max-w-none w-full' : ''}`}>
+          <section id="skills" className={`reveal reveal-up transition-all duration-300 ${windows.skills.max ? 'max-w-none w-full' : ''}`}>
             <div className="win98-window">
               <div className="win98-titlebar cursor-pointer" onDoubleClick={() => handleWinControl('skills', 'max')}>
                 <div className="flex items-center gap-2">
