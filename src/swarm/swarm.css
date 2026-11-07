@@ -1,0 +1,231 @@
+/* Swarm Rebuild — Joratali Engineering.
+   Ghost state: while the swarm is active, target sections stay in the
+   DOM (so SEO and screen readers still see them) but are invisible
+   until a cursor builds them. Anything that is NOT a build target is
+   marked data-swarm-built at once, so it behaves exactly as before. */
+
+html.swarm-active .reveal:not([data-swarm-built]) {
+  opacity: 0 !important;
+  transform: translateY(40px) !important;
+}
+
+html.swarm-active nav:not([data-swarm-built]) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+html.swarm-active #projects .win98-window:not([data-swarm-built]),
+html.swarm-active #victims .win98-window:not([data-swarm-built]) {
+  opacity: 0 !important;
+}
+
+html.swarm-active #skills .grid .win98-inset:not([data-swarm-built]),
+html.swarm-active #process .win98-box:not([data-swarm-built]) {
+  opacity: 0 !important;
+}
+
+html.swarm-active .reveal[data-swarm-built],
+html.swarm-active nav[data-swarm-built] {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
+/* ---- overlay layer (pointer-events: none, except the toolbar) ---- */
+.swarm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.swarm-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  will-change: transform;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+  transition: opacity 0.4s ease;
+}
+
+.swarm-cursor svg {
+  display: block;
+  width: 26px;
+  height: 26px;
+}
+
+/* Crosshair box being dragged out, with a live W x H badge. */
+.swarm-draw-box {
+  position: absolute;
+  border: 1.5px dashed #0d99ff;
+  background: rgba(13, 153, 255, 0.06);
+  box-sizing: border-box;
+  display: none;
+}
+
+.swarm-size-badge {
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  transform: translateX(-50%);
+  background: #0d99ff;
+  color: #fff;
+  font: 700 11px/1 monospace;
+  padding: 4px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Figma-style ruler guide (red) that text snaps onto. */
+.swarm-guide {
+  position: absolute;
+  height: 0;
+  border-top: 1.5px solid #f24822;
+  display: none;
+}
+
+.swarm-guide::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  background: #f24822;
+  border-radius: 50%;
+}
+
+/* Blinking caret while a heading is being "typed". */
+.swarm-caret {
+  position: absolute;
+  width: 2px;
+  height: 22px;
+  background: #1c1917;
+  display: none;
+  animation: swarm-caret-blink 0.8s steps(1) infinite;
+}
+
+@keyframes swarm-caret-blink {
+  0%, 55% { opacity: 1; }
+  56%, 100% { opacity: 0; }
+}
+
+/* Red spacing measurement shown when a card is duplicated. */
+.swarm-spacing {
+  position: absolute;
+  background: #f24822;
+  color: #fff;
+  font: 700 11px/1 monospace;
+  padding: 4px 7px;
+  border-radius: 3px;
+  white-space: nowrap;
+  display: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* ---- Win98 toolbar (the only part of the overlay you can click) ---- */
+.swarm-toolbar {
+  position: fixed;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  z-index: 9100;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100vw - 16px);
+  padding: 5px 6px;
+  background: #c0c0c0;
+  border: 2px solid #000;
+  box-shadow:
+    inset -1px -1px 0 #808080,
+    inset 1px 1px 0 #fff,
+    0 4px 14px rgba(0, 0, 0, 0.35);
+  font-family: monospace;
+  pointer-events: auto;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.swarm-toolbar .swarm-status {
+  font-size: 11px;
+  font-weight: 700;
+  color: #000080;
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.swarm-toolbar button {
+  font: 700 12px/1 monospace;
+  color: #000;
+  background: #dfdfdf;
+  border: 2px solid #000;
+  box-shadow: inset -1px -1px 0 #808080, inset 1px 1px 0 #fff;
+  padding: 7px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.swarm-toolbar button:hover {
+  background: #fff;
+}
+
+.swarm-toolbar button:active {
+  box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+}
+
+.swarm-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.swarm-toolbar button.swarm-primary {
+  background: #000080;
+  color: #fff;
+}
+
+.swarm-toolbar button.swarm-on {
+  background: #ffe680;
+}
+
+.swarm-speed {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.swarm-speed .swarm-speed-label {
+  min-width: 44px;
+  text-align: center;
+  font: 700 12px/1 monospace;
+  color: #000;
+  background: #fff;
+  border: 2px solid #000;
+  padding: 7px 2px;
+}
+
+@media (max-width: 640px) {
+  .swarm-toolbar {
+    bottom: 8px;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .swarm-toolbar .swarm-status {
+    display: none;
+  }
+
+  .swarm-toolbar button {
+    padding: 6px 7px;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swarm-caret {
+    animation: none;
+  }
+}
