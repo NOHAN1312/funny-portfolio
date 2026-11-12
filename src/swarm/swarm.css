@@ -209,9 +209,17 @@ html.swarm-active nav[data-swarm-built] {
 
 @media (max-width: 640px) {
   .swarm-toolbar {
+    /* Span the viewport instead of centring a fixed-width bar: the
+       old centred bar measured ~510px wide and its right-hand buttons
+       (Live / Replay) clipped off-screen at 390px. */
+    left: 8px;
+    right: 8px;
+    transform: none;
     bottom: 8px;
     gap: 4px;
+    row-gap: 4px;
     padding: 4px;
+    max-width: none;
   }
 
   .swarm-toolbar .swarm-status {
@@ -221,6 +229,20 @@ html.swarm-active nav[data-swarm-built] {
   .swarm-toolbar button {
     padding: 6px 7px;
     font-size: 11px;
+  }
+
+  /* Icon-only sound button: the "শব্দের জন্য ট্যাপ করুন" label alone
+     is wider than a phone row and pushed Live/Replay off-screen. */
+  .swarm-toolbar .swarm-sound-label {
+    display: none;
+  }
+
+  /* Cursors are the effect itself — make them clearly visible on
+     touch screens, where there is no mouse pointer to relate to. */
+  .swarm-cursor,
+  .swarm-cursor svg {
+    width: 30px;
+    height: 30px;
   }
 }
 
