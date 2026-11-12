@@ -39,7 +39,27 @@ const COLORS = ['#F24E1E', '#A259FF', '#1ABCFE', '#0ACF83'];
 // build took ~6 minutes on the live site (hero ~20s, ~2min stall at
 // 6/7). All waits below are divided by the speed stepper, so -/+
 // still scales everything. Hard cap per section: SECTION_BUDGET_MS.
+//
+// PR #3 (2026-11-12) — why the 4s cap did NOT cap live time:
+// the cap only bounds the choreography AFTER a section's build starts.
+// It does not bound (a) bundle load + React hydration before startRun,
+// (b) the 700ms orbit intro, (c) time spent waiting in the serial
+// queue behind earlier sections, or (d) — biggest — time waiting for
+// the IntersectionObserver to fire, which needs the section to scroll
+// into view. On desktop there was NO auto-advance at all: a visitor
+// who never scrolled sat at 2/7 forever, and every live check's wall
+// clock was dominated by waiting between scrolls. The live bundle was
+// verified to BE the PR #2 build (asset hash index-DyKkcqGp.js matches
+// a fresh local build of main@14c0342b), so this is runtime gating,
+// not a stale deploy. PR #3 therefore adds: a gentle auto-tour on
+// every viewport once the hero is built (stops on user scroll/wheel),
+// try/finally + watchdog so a stalled section can never stick the
+// counter, and a one-item Contact build.
 const SECTION_BUDGET_MS = 4000;
+// Watchdog: a section may not sit in `building` longer than this.
+const WATCHDOG_MS = 10000;
+// Beat after the hero finishes before the auto-tour starts moving.
+const AUTO_TOUR_DELAY_MS = 2500;
 
 const SECTIONS = [
   { id: 'nav', label: 'ন্যাভবার' },
@@ -91,6 +111,10 @@ export default function SwarmRebuild() {
   const tokenRef = useRef(0);
   const builtRef = useRef(new Set());
   const buildingRef = useRef(new Set());
+  const buildStartRef = useRef(new Map()); // section id -> Date.now() when its build started
+  const retryRef = useRef(new Set()); // sections already retried once after a throw
+  const pendingRef = useRef(0); // sections enqueued but not yet settled (queue not idle)
+  const sectionWatcherRef = useRef(null); // MutationObserver for late-mounted sections
   const skipRef = useRef(new Set()); // sections released early (timeout / catch-up)
   const queueRef = useRef(Promise.resolve());
   const tourRef = useRef(false);
@@ -153,7 +177,7 @@ export default function SwarmRebuild() {
     c.tx = clamp(x, 8, window.innerWidth - 8);
     c.ty = clamp(y, 8, window.innerHeight - 8);
     const dist = Math.hypot(c.tx - c.x, c.ty - c.y);
-    const dur = clamp(dist / 2.2, 80, 320) / speedRef.current;
+    const dur = clamp(dist / 2.2, 80, 260) / speedRef.current;
     await sleep(dur);
   };
 
@@ -180,7 +204,7 @@ export default function SwarmRebuild() {
         { width: '4px', height: '4px' },
         { width: `${rect.width}px`, height: `${rect.height}px` },
       ],
-      { duration: 160 / speedRef.current, easing: 'ease-out', fill: 'forwards' },
+      { duration: 140 / speedRef.current, easing: 'ease-out', fill: 'forwards' },
     );
   };
 
@@ -196,13 +220,13 @@ export default function SwarmRebuild() {
     g.style.top = `${rect.top - 6}px`;
     g.style.width = '0px';
     g.animate([{ width: '0px' }, { width: `${rect.width + 48}px` }], {
-      duration: 180 / speedRef.current,
+      duration: 150 / speedRef.current,
       easing: 'ease-out',
       fill: 'forwards',
     });
-    await sleep(180 / speedRef.current);
+    await sleep(150 / speedRef.current);
     sfx().snap(rect.left + rect.width / 2, window.innerWidth);
-    await sleep(60 / speedRef.current);
+    await sleep(50 / speedRef.current);
     g.style.display = 'none';
   };
 
@@ -225,7 +249,7 @@ export default function SwarmRebuild() {
       const ch = text ? text[Math.floor((k / steps) * text.length)] : '';
       sfx().key(x, window.innerWidth, `type-${cursorIx}`, 1, ch === ' ' ? 1 : 0);
       if (k % 6 === 5) sfx().grow(Math.floor(k / 6), x, window.innerWidth);
-      await sleep(12 / speedRef.current);
+      await sleep(10 / speedRef.current);
     }
     if (caret) caret.style.display = 'none';
     setCursorShape(cursorIx, 'arrow');
@@ -238,7 +262,7 @@ export default function SwarmRebuild() {
     if (rect.width > 0 && rect.height > 0) {
       el.animate(
         [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)' }],
-        { duration: 300 / speedRef.current, easing: 'ease-out' },
+        { duration: 250 / speedRef.current, easing: 'ease-out' },
       );
     }
     if (kind) {
@@ -252,7 +276,7 @@ export default function SwarmRebuild() {
     await moveCursorTo(cursorIx, rect.left + 8, rect.top + 8, 'cross');
     sfx().press(rect.left, window.innerWidth);
     showDrawBox(rect);
-    await sleep(120 / speedRef.current);
+    await sleep(90 / speedRef.current);
     hideDrawBox();
     if (isDup && prevRect) {
       const sp = spacingRef.current;
@@ -261,13 +285,13 @@ export default function SwarmRebuild() {
         sp.style.left = `${rect.left}px`;
         sp.style.top = `${Math.max(8, rect.top - 26)}px`;
         sp.textContent = `↔ ${Math.round(Math.abs(rect.top - prevRect.bottom))}px`;
-        await sleep(100 / speedRef.current);
+        await sleep(80 / speedRef.current);
         sp.style.display = 'none';
       }
       sfx().place('dup', rect.left + rect.width / 2, rect.top, rect.width, rect.height, window.innerWidth, window.innerHeight);
     }
     releaseEl(el, kind === 'image' ? 'image' : 'rect');
-    await sleep(60 / speedRef.current);
+    await sleep(50 / speedRef.current);
   };
 
   // Items drawn one-by-one inside a section (victims/projects/process/skills).
@@ -302,6 +326,7 @@ export default function SwarmRebuild() {
     skipRef.current.add(section.id);
     builtRef.current.add(section.id);
     buildingRef.current.delete(section.id);
+    buildStartRef.current.delete(section.id);
     setBuiltCount(builtRef.current.size);
     if (builtRef.current.size >= SECTIONS.length && phaseRef.current === 'building') {
       setPhase('done');
@@ -321,7 +346,24 @@ export default function SwarmRebuild() {
     }
   };
 
+  // One build attempt. The wrapper owns the `building` bookkeeping with
+  // try/finally, so a step that throws can NEVER leak the entry: before
+  // PR #3 a throw left the section in buildingRef, enqueueBuild then
+  // refused it forever ("already building"), the queue never retried
+  // it, and the section stayed ghost-hidden with the counter stuck —
+  // while the queue's .catch(()=>{}) swallowed the error silently.
   const buildSection = async (section) => {
+    buildStartRef.current.set(section.id, Date.now());
+    try {
+      await buildSectionOnce(section);
+    } finally {
+      buildingRef.current.delete(section.id);
+      buildStartRef.current.delete(section.id);
+      pendingRef.current = Math.max(0, pendingRef.current - 1);
+    }
+  };
+
+  const buildSectionOnce = async (section) => {
     const token = tokenRef.current;
     const startedAt = Date.now();
     // Stop choreographing if this run was cancelled, released early, or
@@ -338,7 +380,6 @@ export default function SwarmRebuild() {
       return;
     }
     if (builtRef.current.has(section.id)) return;
-    buildingRef.current.add(section.id);
     setCurrentLabel(`${section.label} বানানো হচ্ছে…`);
     const rect = el.getBoundingClientRect();
     const lead = SECTIONS.findIndex((s) => s.id === section.id) % COLORS.length;
@@ -350,7 +391,7 @@ export default function SwarmRebuild() {
     hoverOthers(lead, rect);
     sfx().press(rect.left, window.innerWidth);
     showDrawBox(rect);
-    await sleep(140 / speedRef.current);
+    await sleep(120 / speedRef.current);
     hideDrawBox();
 
     // 2. Ruler guide + typing across the heading.
@@ -383,14 +424,15 @@ export default function SwarmRebuild() {
       prevRect = item.getBoundingClientRect();
     }
 
-    // Contact form: draw each field in order, but never type into it —
-    // the form stays exactly as the user built it.
+    // Contact form: ONE box for the whole form — never type into it,
+    // and never draw each input separately. Drawing every field made
+    // 7/7 the slowest step; the form stays exactly as the user built it.
     if (section.id === 'contact') {
-      const fields = Array.from(el.querySelectorAll('form input, form textarea, form button'));
-      for (let i = 0; i < fields.length; i++) {
+      const form = el.querySelector('form');
+      if (form) {
         if (aborted()) return;
         if (overBudget()) return finishFast();
-        await drawItem((lead + i) % COLORS.length, fields[i], 'rect', false, null);
+        await drawItem(lead, form, 'rect', false, null);
       }
     }
 
@@ -403,10 +445,10 @@ export default function SwarmRebuild() {
       }
     }
 
-    // 4. Release the real section.
+    // 4. Release the real section. (buildSection's finally removes the
+    // `building` entry, so this path never has to.)
     releaseEl(el, 'rect');
     builtRef.current.add(section.id);
-    buildingRef.current.delete(section.id);
     setBuiltCount(builtRef.current.size);
     await sleep(60 / speedRef.current);
 
@@ -420,12 +462,28 @@ export default function SwarmRebuild() {
   const enqueueBuild = (section) => {
     if (builtRef.current.has(section.id) || buildingRef.current.has(section.id)) return queueRef.current;
     buildingRef.current.add(section.id);
+    pendingRef.current += 1;
     queueRef.current = queueRef.current
-      .then(() => {
-        buildingRef.current.delete(section.id);
-        return buildSection(section);
-      })
-      .catch(() => {});
+      .then(() => buildSection(section))
+      .catch((err) => {
+        // A failed build is retried ONCE, then force-released visible —
+        // it must never sit in `building` forever. Errors are logged,
+        // not swallowed: the old silent .catch(()=>{}) hid the stall.
+        // The retry's own failure is caught too, so the queue chain
+        // itself never rejects and later sections are never blamed.
+        console.warn('[swarm] build failed for section:', section.id, err);
+        if (!retryRef.current.has(section.id)) {
+          retryRef.current.add(section.id);
+          buildingRef.current.add(section.id);
+          pendingRef.current += 1;
+          return buildSection(section).catch((err2) => {
+            console.warn('[swarm] build failed twice, force-releasing section:', section.id, err2);
+            releaseSectionNow(section);
+          });
+        }
+        console.warn('[swarm] build failed twice, force-releasing section:', section.id);
+        releaseSectionNow(section);
+      });
     return queueRef.current;
   };
 
@@ -446,6 +504,9 @@ export default function SwarmRebuild() {
     tokenRef.current += 1;
     tourRef.current = false;
     setTourOn(false);
+    buildStartRef.current = new Map();
+    retryRef.current = new Set();
+    pendingRef.current = 0;
     markAllBuilt();
     document.documentElement.classList.remove('swarm-active');
     setPhase('live');
@@ -462,6 +523,9 @@ export default function SwarmRebuild() {
       .forEach((el) => delete el.dataset.swarmBuilt);
     builtRef.current = new Set();
     buildingRef.current = new Set();
+    buildStartRef.current = new Map();
+    retryRef.current = new Set();
+    pendingRef.current = 0;
     skipRef.current = new Set();
     setBuiltCount(0);
     setPhase('building');
@@ -493,10 +557,10 @@ export default function SwarmRebuild() {
         c.tx = cx + Math.cos(a) * r;
         c.ty = cy + Math.sin(a) * r * 0.6;
       });
-      if (performance.now() - orbitStart < 700) requestAnimationFrame(orbit);
+      if (performance.now() - orbitStart < 400) requestAnimationFrame(orbit);
     };
     orbit();
-    await sleep(isReplay ? 400 : 700);
+    await sleep(isReplay ? 300 : 400);
     if (tokenRef.current !== token) return;
     sfx().start();
     // Observe first, so a fast scroll during the hero build is not missed.
@@ -513,31 +577,61 @@ export default function SwarmRebuild() {
           enqueueBuild(sec);
         });
       },
-      { threshold: 0.15, rootMargin: '0px 0px -10% 0px' },
+      // Low threshold on purpose: on a phone a tall section (victims
+      // with 11 cards in one column) can never reach 15% visibility,
+      // so it would never start building at all.
+      { threshold: 0.05, rootMargin: '0px 0px -10% 0px' },
     );
     observerRef.current = observer;
     SECTIONS.slice(2).forEach((sec) => {
       const el = document.getElementById(sec.id);
       if (el) observer.observe(el);
     });
+    // Sections mount late when a window was closed and is restored
+    // (App.jsx renders hero/skills/process/contact only when not
+    // closed). The one-time observer above never sees them, so they
+    // would mount ghost-hidden and never build. Watch for them and
+    // observe + start any that is already in view.
+    if (window.MutationObserver) {
+      const watcher = new MutationObserver(() => {
+        SECTIONS.slice(2).forEach((sec) => {
+          const el = document.getElementById(sec.id);
+          if (!el) return;
+          observer.observe(el);
+          const r = el.getBoundingClientRect();
+          if (r.bottom > 0 && r.top < window.innerHeight * 0.9 && !builtRef.current.has(sec.id)) {
+            releaseEarlierSections(sec);
+            enqueueBuild(sec);
+          }
+        });
+      });
+      watcher.observe(document.body, { childList: true, subtree: true });
+      sectionWatcherRef.current = watcher;
+    }
     enqueueBuild(SECTIONS[0]);
     enqueueBuild(SECTIONS[1]);
-    // Mobile: gentle auto-tour after the hero is built.
-    if (window.innerWidth < 720) {
-      const waitHero = setInterval(() => {
-        if (tokenRef.current !== token || phaseRef.current !== 'building') {
-          clearInterval(waitHero);
-          return;
-        }
-        if (builtRef.current.has('hero') && !userScrolledRef.current && window.scrollY < 100) {
-          clearInterval(waitHero);
+    // Gentle auto-tour on EVERY viewport once the hero is built: if the
+    // visitor has not scrolled, tour the rest of the page. Any wheel /
+    // touch scroll stops it. Before PR #3 this existed only on mobile
+    // (<720px), so on desktop a visitor who never scrolled sat at 2/7
+    // forever — the main reason live builds looked minutes long.
+    // (The 2.5s beat lets the visitor actually see the finished hero.)
+    const waitHero = setInterval(() => {
+      if (tokenRef.current !== token || phaseRef.current !== 'building') {
+        clearInterval(waitHero);
+        return;
+      }
+      if (builtRef.current.has('hero') && !userScrolledRef.current && window.scrollY < 100) {
+        clearInterval(waitHero);
+        setTimeout(() => {
+          if (tokenRef.current !== token || phaseRef.current !== 'building' || userScrolledRef.current) return;
           setTourOn(true);
           tourRef.current = true;
           void runTour();
-        }
-      }, 500);
-      setTimeout(() => clearInterval(waitHero), 30000);
-    }
+        }, AUTO_TOUR_DELAY_MS);
+      }
+    }, 500);
+    setTimeout(() => clearInterval(waitHero), 60000);
   };
 
   const runTour = async () => {
@@ -554,13 +648,13 @@ export default function SwarmRebuild() {
       const started = Date.now();
       while (
         !builtRef.current.has(next.id) &&
-        Date.now() - started < 6000 &&
+        Date.now() - started < 4500 &&
         tourRef.current &&
         tokenRef.current === token
       ) {
         await sleep(200);
       }
-      await sleep(200 / speedRef.current);
+      await sleep(150 / speedRef.current);
     }
     tourRef.current = false;
     setTourOn(false);
@@ -644,10 +738,40 @@ export default function SwarmRebuild() {
       });
       victimsObserver.observe(victimsEl, { childList: true, subtree: true });
     }
+    // Watchdog (PR #3): no section may sit in `building` for more than
+    // WATCHDOG_MS. If one does — stalled mid-build, or its build never
+    // started because the queue is idle and it never intersected — it
+    // is force-released visible and the queue advances. Without this,
+    // one stuck section hid forever and the counter stuck with it.
+    const watchdog = setInterval(() => {
+      if (phaseRef.current !== 'building') return;
+      const now = Date.now();
+      buildStartRef.current.forEach((startedAt, id) => {
+        if (now - startedAt > WATCHDOG_MS) {
+          const sec = SECTIONS.find((s) => s.id === id);
+          console.warn('[swarm] watchdog: section stuck in building, force-releasing:', id);
+          if (sec) releaseSectionNow(sec);
+        }
+      });
+      // Queue idle but an unbuilt section is already on screen (e.g.
+      // its observer never fired): start it instead of waiting forever.
+      if (pendingRef.current === 0 && buildingRef.current.size === 0) {
+        const inView = SECTIONS.find((s) => {
+          if (builtRef.current.has(s.id)) return false;
+          const el = s.id === 'nav' ? document.querySelector('nav') : document.getElementById(s.id);
+          if (!el) return false;
+          const r = el.getBoundingClientRect();
+          return r.bottom > 0 && r.top < window.innerHeight;
+        });
+        if (inView) enqueueBuild(inView);
+      }
+    }, 1000);
     void startRun(false);
     return () => {
       tokenRef.current = -1;
       cancelAnimationFrame(rafRef.current);
+      clearInterval(watchdog);
+      if (sectionWatcherRef.current) sectionWatcherRef.current.disconnect();
       if (observerRef.current) observerRef.current.disconnect();
       if (victimsObserver) victimsObserver.disconnect();
       window.removeEventListener('pointermove', onPointerMove);
@@ -744,8 +868,11 @@ export default function SwarmRebuild() {
             +
           </button>
         </div>
-        <button type="button" onClick={toggleSound} title="সাউন্ড (M)">
-          {soundBlocked ? '🔊 শব্দের জন্য ট্যাপ করুন' : soundOn ? '🔊 সাউন্ড' : '🔇 নিঃশব্দ'}
+        <button type="button" onClick={toggleSound} title="সাউন্ড (M)" className="swarm-sound-btn">
+          <span aria-hidden="true">{soundBlocked ? '🔊' : soundOn ? '🔊' : '🔇'}</span>
+          <span className="swarm-sound-label">
+            {soundBlocked ? ' শব্দের জন্য ট্যাপ করুন' : soundOn ? ' সাউন্ড' : ' নিঃশব্দ'}
+          </span>
         </button>
         {phase !== 'live' && (
           <button type="button" onClick={goLive} className="swarm-primary">
