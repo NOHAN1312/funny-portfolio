@@ -56,13 +56,35 @@ html.swarm-active nav[data-swarm-built] {
   height: 26px;
 }
 
-/* Crosshair box being dragged out, with a live W x H badge. */
+/* Crosshair box being dragged out, with a live W x H badge and crosshair lines. */
 .swarm-draw-box {
   position: absolute;
   border: 1.5px dashed #0d99ff;
   background: rgba(13, 153, 255, 0.06);
   box-sizing: border-box;
   display: none;
+}
+
+.swarm-draw-box::before,
+.swarm-draw-box::after {
+  content: '';
+  position: fixed;
+  pointer-events: none;
+  background: rgba(13, 153, 255, 0.28);
+}
+
+.swarm-draw-box::before {
+  left: 0;
+  right: 0;
+  top: var(--cross-y, 0px);
+  height: 1px;
+}
+
+.swarm-draw-box::after {
+  top: 0;
+  bottom: 0;
+  left: var(--cross-x, 0px);
+  width: 1px;
 }
 
 .swarm-size-badge {
@@ -223,7 +245,11 @@ html.swarm-active nav[data-swarm-built] {
   }
 
   .swarm-toolbar .swarm-status {
-    display: none;
+    flex-basis: 100%;
+    text-align: center;
+    font-size: 10px;
+    line-height: 1.2;
+    padding: 0;
   }
 
   .swarm-toolbar button {
