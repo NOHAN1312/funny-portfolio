@@ -1,17 +1,25 @@
 /* Swarm Rebuild — Joratali Engineering.
    Ghost state: while the swarm is active, target sections stay in the
    DOM (so SEO and screen readers still see them) but are invisible
-   until a cursor builds them. Anything that is NOT a build target is
-   marked data-swarm-built at once, so it behaves exactly as before. */
+   until a cursor builds them. Once a section enters `data-swarm-building`,
+   its outer container becomes visible immediately so each inner piece
+   (window frame, heading typed character-by-character, cards, images,
+   buttons) appears live on screen the exact moment a cursor draws it. */
 
-html.swarm-active .reveal:not([data-swarm-built]) {
+html.swarm-active .reveal:not([data-swarm-built]):not([data-swarm-building]) {
   opacity: 0 !important;
-  transform: translateY(40px) !important;
+  transform: none !important;
+  pointer-events: none !important;
 }
 
-html.swarm-active nav:not([data-swarm-built]) {
+html.swarm-active nav:not([data-swarm-built]):not([data-swarm-building]) {
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+html.swarm-active [data-swarm-shell]:not([data-swarm-built]),
+html.swarm-active [data-swarm-part]:not([data-swarm-built]) {
+  opacity: 0 !important;
 }
 
 html.swarm-active #projects .win98-window:not([data-swarm-built]),
@@ -20,11 +28,13 @@ html.swarm-active #victims .win98-window:not([data-swarm-built]) {
 }
 
 html.swarm-active #skills .grid > .win98-inset:not([data-swarm-built]),
-html.swarm-active #process .win98-box:not([data-swarm-built]) {
+html.swarm-active #process .grid > .win98-box:not([data-swarm-built]) {
   opacity: 0 !important;
 }
 
+html.swarm-active .reveal[data-swarm-building],
 html.swarm-active .reveal[data-swarm-built],
+html.swarm-active nav[data-swarm-building],
 html.swarm-active nav[data-swarm-built] {
   opacity: 1 !important;
   transform: none !important;
@@ -60,7 +70,7 @@ html.swarm-active nav[data-swarm-built] {
 .swarm-draw-box {
   position: absolute;
   border: 1.5px dashed #0d99ff;
-  background: rgba(13, 153, 255, 0.06);
+  background: rgba(13, 153, 255, 0.08);
   box-sizing: border-box;
   display: none;
 }
@@ -70,7 +80,7 @@ html.swarm-active nav[data-swarm-built] {
   content: '';
   position: fixed;
   pointer-events: none;
-  background: rgba(13, 153, 255, 0.28);
+  background: rgba(13, 153, 255, 0.32);
 }
 
 .swarm-draw-box::before {
@@ -85,6 +95,15 @@ html.swarm-active nav[data-swarm-built] {
   bottom: 0;
   left: var(--cross-x, 0px);
   width: 1px;
+}
+
+/* Ghost duplicate box dragged from previous card to new card (Alt-drag). */
+.swarm-dup-box {
+  position: absolute;
+  border: 1.5px dashed #a259ff;
+  background: rgba(162, 89, 255, 0.1);
+  box-sizing: border-box;
+  display: none;
 }
 
 .swarm-size-badge {
@@ -123,11 +142,11 @@ html.swarm-active nav[data-swarm-built] {
 /* Blinking caret while a heading is being "typed". */
 .swarm-caret {
   position: absolute;
-  width: 2px;
-  height: 22px;
-  background: #1c1917;
+  width: 2.5px;
+  height: 24px;
+  background: #f24e1e;
   display: none;
-  animation: swarm-caret-blink 0.8s steps(1) infinite;
+  animation: swarm-caret-blink 0.5s steps(1) infinite;
 }
 
 @keyframes swarm-caret-blink {
@@ -196,7 +215,7 @@ html.swarm-active nav[data-swarm-built] {
 }
 
 .swarm-toolbar button:active {
-  box-shadow: inset 1px 1px 0 #808080, inset -1px -1px 0 #fff;
+  box-shadow: inset 1px 1px 0 #808080, inset -1px 1px 0 #fff;
 }
 
 .swarm-toolbar button:disabled {
@@ -231,9 +250,6 @@ html.swarm-active nav[data-swarm-built] {
 
 @media (max-width: 640px) {
   .swarm-toolbar {
-    /* Span the viewport instead of centring a fixed-width bar: the
-       old centred bar measured ~510px wide and its right-hand buttons
-       (Live / Replay) clipped off-screen at 390px. */
     left: 8px;
     right: 8px;
     transform: none;
@@ -257,14 +273,10 @@ html.swarm-active nav[data-swarm-built] {
     font-size: 11px;
   }
 
-  /* Icon-only sound button: the "শব্দের জন্য ট্যাপ করুন" label alone
-     is wider than a phone row and pushed Live/Replay off-screen. */
   .swarm-toolbar .swarm-sound-label {
     display: none;
   }
 
-  /* Cursors are the effect itself — make them clearly visible on
-     touch screens, where there is no mouse pointer to relate to. */
   .swarm-cursor,
   .swarm-cursor svg {
     width: 30px;

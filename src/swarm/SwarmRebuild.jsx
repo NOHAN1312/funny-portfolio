@@ -1,30 +1,23 @@
 /**
  * SwarmRebuild — Joratali Engineering.
  *
- * A swarm of four nameless, coloured cursors rebuilds this site live:
- * on load it builds the navbar and the hero window, then builds each
- * section as it scrolls into view — the same idea as the Swarm Rebuild
- * extension, adapted to this site's own Win98 windows.
- *
- * How it works (no DOM text is ever rewritten, no React state is
- * touched, no copy / project data / form behaviour changes):
- *  - Target sections stay in the DOM for SEO, but are visually hidden
- *    ("ghost state") until a cursor builds them. The gate is a
- *    `data-swarm-built` attribute, which React never manages, so a
- *    re-render can never wipe it away.
- *  - The existing `.reveal` IntersectionObserver is left alone; the
- *    swarm CSS simply keeps `.reveal` invisible while the swarm is
- *    active and the section is not built yet.
- *  - Each build step is a small choreography: a cursor changes shape
- *    (crosshair for boxes, I-beam for typing, pen for lines), draws a
- *    box with a live W x H badge and crosshair lines, a red ruler guide
- *    snaps in, a blinking caret "types" across the heading while
- *    mechanical keyboard sounds play, then the real section sweeps in
- *    top-to-bottom. Repeated cards are built as duplicates with a red
- *    spacing measurement and duplicate-slide animation.
- *  - ParticleText and SpiderClock are NOT rebuilt; they stay live.
- *  - prefers-reduced-motion shows the whole site instantly, with no
- *    sound and no overlay.
+ * A swarm of four nameless, coloured cursors rebuilds this site live
+ * piece-by-piece, inspired by the Swarm Rebuild Chrome extension:
+ *  1. When a section begins building, its outer `<section>` container
+ *     is unlocked immediately (`data-swarm-building="1"`) while its
+ *     inner pieces (window shell, heading, cards, preview image,
+ *     buttons, form) are individually gated (`data-swarm-part` /
+ *     `data-swarm-shell`).
+ *  2. A cursor drags a crosshair box diagonally from top-left to
+ *     bottom-right with a live-counting W x H badge and full-viewport
+ *     crosshair lines; the Win98 window shell appears immediately.
+ *  3. A pen cursor snaps a red ruler guide under the heading, then an
+ *     I-beam cursor + blinking caret types across the heading while
+ *     revealing the text character-by-character from left to right.
+ *  4. The four cursors draw/duplicate the inner cards, images, and
+ *     controls one by one (with an Alt-drag ghost duplicate box and
+ *     red spacing measurement), and each card becomes visible the
+ *     exact instant its cursor finishes drawing it.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -35,21 +28,11 @@ const SPEEDS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
 const DEFAULT_SPEED_IX = 3; // 1x
 const COLORS = ['#F24E1E', '#A259FF', '#1ABCFE', '#0ACF83'];
 
-// Hard per-section budget at 1x speed (~4s). A slow section is
-// force-released immediately when its budget expires so it can never
-// block the serial build queue.
 const SECTION_BUDGET_MS = 4000;
-// Watchdog: force-releases any section stuck in `building` OR stuck in
-// the queue longer than 10s.
 const WATCHDOG_MS = 10000;
-// Auto-tour starts 2.5s after the hero is visibly built and on screen.
 const AUTO_TOUR_DELAY_MS = 2500;
-// Minimum time the tour lingers on each section.
 const MIN_TOUR_DWELL_MS = 1200;
-// Idle time after user scrolling ends before the build auto-resumes.
 const SCROLL_RESUME_MS = 900;
-// Max cards individually choreographed per section so 11 expanded
-// victims never blow past the 4s section budget.
 const MAX_CHOREOGRAPHED_ITEMS = 4;
 
 const SECTIONS = [
@@ -104,18 +87,18 @@ export default function SwarmRebuild() {
   const tokenRef = useRef(0);
   const builtRef = useRef(new Set());
   const buildingRef = useRef(new Set());
-  const buildStartRef = useRef(new Map()); // section id -> Date.now() when its build started
-  const retryRef = useRef(new Set()); // sections already retried once after a throw
-  const pendingRef = useRef(0); // sections enqueued but not yet settled (queue not idle)
-  const sectionWatcherRef = useRef(null); // MutationObserver for late-mounted sections
-  const skipRef = useRef(new Set()); // sections released early (timeout / catch-up)
+  const buildStartRef = useRef(new Map());
+  const retryRef = useRef(new Set());
+  const pendingRef = useRef(0);
+  const sectionWatcherRef = useRef(null);
+  const skipRef = useRef(new Set());
   const queueRef = useRef(Promise.resolve());
   const tourRef = useRef(false);
   const phaseRef = useRef('building');
   const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const userScrolledRef = useRef(false);
-  const queuedAtRef = useRef(new Map()); // section id -> Date.now() when enqueued
-  const heroVisibleAtRef = useRef(null); // set ONLY when hero's own build completes in view
+  const queuedAtRef = useRef(new Map());
+  const heroVisibleAtRef = useRef(null);
   const scrollEndTimerRef = useRef(null);
   const waitHeroTimerRef = useRef(null);
   const programmaticScrollUntilRef = useRef(0);
@@ -134,6 +117,7 @@ export default function SwarmRebuild() {
   );
   const boxRef = useRef(null);
   const badgeRef = useRef(null);
+  const dupBoxRef = useRef(null);
   const guideRef = useRef(null);
   const caretRef = useRef(null);
   const spacingRef = useRef(null);
@@ -156,26 +140,24 @@ export default function SwarmRebuild() {
   const getSectionEl = (sectionId) =>
     sectionId === 'nav' ? document.querySelector('nav') : document.getElementById(sectionId);
 
-  // Cancellable sleep: wakes early if the run token changes or if the
-  // given section was force-released via skipRef.
   const sleep = (ms, sectionId) => {
     const token = tokenRef.current;
     const total = Math.max(0, ms);
     return new Promise((resolve) => {
-      const started = performance.now();
+      const started = perfMs();
       const step = () => {
         if (tokenRef.current !== token || (sectionId && skipRef.current.has(sectionId))) {
           resolve(false);
           return;
         }
-        const rem = total - (performance.now() - started);
+        const rem = total - (perfMs() - started);
         if (rem <= 0) {
           resolve(true);
           return;
         }
-        setTimeout(step, Math.min(40, rem));
+        setTimeout(step, Math.min(35, rem));
       };
-      setTimeout(step, Math.min(40, total));
+      setTimeout(step, Math.min(35, total));
     });
   };
 
@@ -202,83 +184,171 @@ export default function SwarmRebuild() {
     c.tx = clamp(x, 8, window.innerWidth - 8);
     c.ty = clamp(y, 8, window.innerHeight - 8);
     const dist = Math.hypot(c.tx - c.x, c.ty - c.y);
-    const dur = clamp(dist / 2.2, 70, 220) / speedRef.current;
+    const dur = clamp(dist / 2.6, 55, 170) / speedRef.current;
     await sleep(dur, sectionId);
   };
 
   const hoverOthers = (i, rect) => {
     cursorsRef.current.forEach((c, j) => {
       if (j === i) return;
-      c.tx = clamp(rect.left + rand(0.1, 0.9) * rect.width, 8, window.innerWidth - 8);
-      c.ty = clamp(rect.top + rand(0.1, 0.9) * rect.height, 8, window.innerHeight - 8);
+      c.tx = clamp(rect.left + rand(0.08, 0.92) * rect.width, 8, window.innerWidth - 8);
+      c.ty = clamp(rect.top + rand(0.08, 0.92) * rect.height, 8, window.innerHeight - 8);
     });
   };
 
-  const showDrawBox = (rect) => {
+  // Drag a crosshair rectangle from top-left to bottom-right with the
+  // cursor physically pulling the bottom-right corner and the W x H
+  // badge counting up live.
+  const dragBoxWithCursor = async (cursorIx, rect, durationMs, sectionId) => {
     const box = boxRef.current;
     const badge = badgeRef.current;
-    if (!box || !badge) return;
+    const c = cursorsRef.current[cursorIx];
+    if (!box || !badge || !c) return;
+    setCursorShape(cursorIx, 'cross');
+    const startX = clamp(rect.left, 4, window.innerWidth - 12);
+    const startY = clamp(rect.top, 4, window.innerHeight - 12);
+    const totalW = Math.max(8, Math.min(rect.width, window.innerWidth - startX - 4));
+    const totalH = Math.max(8, Math.min(rect.height, window.innerHeight - startY - 4));
+
     box.style.display = 'block';
-    box.style.left = `${rect.left}px`;
-    box.style.top = `${rect.top}px`;
-    box.style.width = '4px';
-    box.style.height = '4px';
-    box.style.setProperty('--cross-x', `${Math.round(rect.left + rect.width)}px`);
-    box.style.setProperty('--cross-y', `${Math.round(rect.top + rect.height)}px`);
-    badge.textContent = `${Math.round(rect.width)} × ${Math.round(rect.height)}`;
-    box.animate(
-      [
-        { width: '4px', height: '4px' },
-        { width: `${rect.width}px`, height: `${rect.height}px` },
-      ],
-      { duration: 130 / speedRef.current, easing: 'ease-out', fill: 'forwards' },
-    );
+    box.style.left = `${startX}px`;
+    box.style.top = `${startY}px`;
+    const steps = 6;
+    const stepWait = Math.max(14, durationMs / steps / speedRef.current);
+    for (let k = 1; k <= steps; k++) {
+      if (sectionId && skipRef.current.has(sectionId)) break;
+      const pct = k / steps;
+      const eased = 1 - Math.pow(1 - pct, 2);
+      const w = Math.max(6, Math.round(totalW * eased));
+      const h = Math.max(6, Math.round(totalH * eased));
+      box.style.width = `${w}px`;
+      box.style.height = `${h}px`;
+      box.style.setProperty('--cross-x', `${startX + w}px`);
+      box.style.setProperty('--cross-y', `${startY + h}px`);
+      badge.textContent = `${Math.round(rect.width * eased)} × ${Math.round(rect.height * eased)}`;
+      c.tx = clamp(startX + w, 8, window.innerWidth - 8);
+      c.ty = clamp(startY + h, 8, window.innerHeight - 8);
+      await sleep(stepWait, sectionId);
+    }
+    box.style.display = 'none';
   };
 
-  const hideDrawBox = () => {
+  // Alt-drag duplicate choreography: cursor starts on the previous card,
+  // drags a purple dashed ghost clone across to the new card while the
+  // red spacing badge measures the gap between them.
+  const dragDuplicateWithCursor = async (cursorIx, prevRect, rect, durationMs, sectionId) => {
+    const dup = dupBoxRef.current;
+    const sp = spacingRef.current;
+    const c = cursorsRef.current[cursorIx];
+    if (!dup || !c) return;
+    setCursorShape(cursorIx, 'arrow');
+    dup.style.display = 'block';
+    dup.style.width = `${Math.max(24, Math.min(rect.width, window.innerWidth - 16))}px`;
+    dup.style.height = `${Math.max(24, Math.min(rect.height, window.innerHeight - 16))}px`;
+
+    const gap = Math.round(
+      Math.abs(rect.top - prevRect.bottom) > 6
+        ? Math.abs(rect.top - prevRect.bottom)
+        : Math.abs(rect.left - prevRect.right),
+    );
+    if (sp) {
+      sp.style.display = 'block';
+      sp.style.left = `${clamp(rect.left + 8, 8, window.innerWidth - 90)}px`;
+      sp.style.top = `${clamp(rect.top - 24, 8, window.innerHeight - 32)}px`;
+      sp.textContent = `↔ ${gap}px`;
+    }
+
+    const steps = 6;
+    const stepWait = Math.max(14, durationMs / steps / speedRef.current);
+    for (let k = 1; k <= steps; k++) {
+      if (sectionId && skipRef.current.has(sectionId)) break;
+      const pct = k / steps;
+      const eased = 1 - Math.pow(1 - pct, 2);
+      const curLeft = prevRect.left + (rect.left - prevRect.left) * eased;
+      const curTop = prevRect.top + (rect.top - prevRect.top) * eased;
+      dup.style.left = `${curLeft}px`;
+      dup.style.top = `${curTop}px`;
+      c.tx = clamp(curLeft + Math.min(80, rect.width * 0.35), 8, window.innerWidth - 8);
+      c.ty = clamp(curTop + Math.min(40, rect.height * 0.35), 8, window.innerHeight - 8);
+      await sleep(stepWait, sectionId);
+    }
+    dup.style.display = 'none';
+    if (sp) sp.style.display = 'none';
+  };
+
+  const hideOverlays = () => {
     if (boxRef.current) boxRef.current.style.display = 'none';
+    if (dupBoxRef.current) dupBoxRef.current.style.display = 'none';
+    if (guideRef.current) guideRef.current.style.display = 'none';
+    if (caretRef.current) caretRef.current.style.display = 'none';
+    if (spacingRef.current) spacingRef.current.style.display = 'none';
   };
 
   const showGuide = async (cursorIx, rect, sectionId) => {
     const g = guideRef.current;
+    const c = cursorsRef.current[cursorIx];
     if (!g) return;
     setCursorShape(cursorIx, 'pen');
+    const startX = Math.max(0, rect.left - 20);
+    const y = rect.bottom + 2;
+    const totalW = Math.min(window.innerWidth - startX, rect.width + 40);
     g.style.display = 'block';
-    g.style.left = `${Math.max(0, rect.left - 24)}px`;
-    g.style.top = `${rect.top - 6}px`;
+    g.style.left = `${startX}px`;
+    g.style.top = `${y}px`;
     g.style.width = '0px';
-    g.animate([{ width: '0px' }, { width: `${rect.width + 48}px` }], {
-      duration: 140 / speedRef.current,
-      easing: 'ease-out',
-      fill: 'forwards',
-    });
-    await sleep(140 / speedRef.current, sectionId);
+    const steps = 5;
+    const stepWait = Math.max(12, 110 / steps / speedRef.current);
+    for (let k = 1; k <= steps; k++) {
+      if (sectionId && skipRef.current.has(sectionId)) break;
+      const w = (k / steps) * totalW;
+      g.style.width = `${w}px`;
+      if (c) {
+        c.tx = clamp(startX + w, 8, window.innerWidth - 8);
+        c.ty = clamp(y, 8, window.innerHeight - 8);
+      }
+      await sleep(stepWait, sectionId);
+    }
     sfx().snap(rect.left + rect.width / 2, window.innerWidth);
-    await sleep(40 / speedRef.current, sectionId);
+    await sleep(30 / speedRef.current, sectionId);
     g.style.display = 'none';
   };
 
-  const typeAcross = async (cursorIx, rect, text, sectionId) => {
+  // Type across a heading while revealing the heading's actual DOM text
+  // character-by-character from left to right behind the blinking caret.
+  const typeAcross = async (cursorIx, headingEl, rect, text, sectionId) => {
     const caret = caretRef.current;
-    const steps = Math.min(Math.max(text ? text.length : 12, 8), 16);
+    const steps = Math.min(Math.max(text ? text.length : 12, 10), 18);
     const c = cursorsRef.current[cursorIx];
     if (!c) return;
     setCursorShape(cursorIx, 'ibeam');
+    if (headingEl) {
+      headingEl.dataset.swarmBuilt = '1';
+      headingEl.style.clipPath = 'inset(0 100% 0 0)';
+    }
     if (caret) {
       caret.style.display = 'block';
-      caret.style.top = `${rect.top + rect.height / 2 - 11}px`;
+      caret.style.top = `${rect.top + Math.max(0, (rect.height - 24) / 2)}px`;
     }
-    for (let k = 0; k < steps; k++) {
+    for (let k = 1; k <= steps; k++) {
       if (sectionId && skipRef.current.has(sectionId)) break;
-      const x = rect.left + 6 + (k / steps) * Math.max(0, rect.width - 12);
+      const pct = k / steps;
+      const x = rect.left + 4 + pct * Math.max(0, rect.width - 8);
       const y = rect.top + rect.height / 2;
-      c.tx = x;
-      c.ty = y;
-      if (caret) caret.style.left = `${x + 8}px`;
-      const ch = text ? text[Math.floor((k / steps) * text.length)] : '';
+      c.tx = clamp(x, 8, window.innerWidth - 8);
+      c.ty = clamp(y, 8, window.innerHeight - 8);
+      if (caret) caret.style.left = `${x + 4}px`;
+      if (headingEl) {
+        const rightInset = Math.max(0, Math.round((1 - pct) * 100));
+        headingEl.style.clipPath = `inset(0 ${rightInset}% 0 0)`;
+      }
+      const ch = text ? text[Math.floor(pct * (text.length - 1))] : '';
       sfx().key(x, window.innerWidth, `type-${cursorIx}`, 1, ch === ' ' ? 1 : 0);
       if (k % 6 === 5) sfx().grow(Math.floor(k / 6), x, window.innerWidth);
-      await sleep(10 / speedRef.current, sectionId);
+      await sleep(11 / speedRef.current, sectionId);
+    }
+    if (headingEl) {
+      headingEl.style.clipPath = '';
+      headingEl.dataset.swarmBuilt = '1';
     }
     if (caret) caret.style.display = 'none';
     setCursorShape(cursorIx, 'arrow');
@@ -287,22 +357,26 @@ export default function SwarmRebuild() {
   const releaseEl = (el, kind, slideFromRect) => {
     if (!el) return;
     el.dataset.swarmBuilt = '1';
+    el.style.clipPath = '';
     const rect = el.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
       if (slideFromRect) {
-        const dx = clamp((slideFromRect.left - rect.left) * 0.35, -120, 120);
-        const dy = clamp((slideFromRect.top - rect.top) * 0.35, -120, 120);
+        const dx = clamp((slideFromRect.left - rect.left) * 0.28, -90, 90);
+        const dy = clamp((slideFromRect.top - rect.top) * 0.28, -90, 90);
         el.animate(
           [
-            { opacity: 0.25, transform: `translate(${dx}px, ${dy}px)` },
-            { opacity: 1, transform: 'translate(0, 0)' },
+            { opacity: 0.35, transform: `translate(${dx}px, ${dy}px) scale(0.97)` },
+            { opacity: 1, transform: 'translate(0, 0) scale(1)' },
           ],
-          { duration: 220 / speedRef.current, easing: 'ease-out' },
+          { duration: 190 / speedRef.current, easing: 'ease-out' },
         );
       } else {
         el.animate(
-          [{ clipPath: 'inset(0 0 100% 0)' }, { clipPath: 'inset(0 0 0% 0)' }],
-          { duration: 240 / speedRef.current, easing: 'ease-out' },
+          [
+            { opacity: 0.2, clipPath: 'inset(0 0 85% 0)' },
+            { opacity: 1, clipPath: 'inset(0 0 0% 0)' },
+          ],
+          { duration: 200 / speedRef.current, easing: 'ease-out' },
         );
       }
     }
@@ -322,34 +396,26 @@ export default function SwarmRebuild() {
   const drawItem = async (cursorIx, el, kind, isDup, prevRect, sectionId) => {
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    if (rect.width < 4 || rect.height < 4) {
+    if (rect.width < 4 || rect.height < 4 || rect.bottom < 0 || rect.top > window.innerHeight + 80) {
       el.dataset.swarmBuilt = '1';
+      el.style.clipPath = '';
       return;
     }
-    await moveCursorTo(cursorIx, rect.left + 8, rect.top + 8, 'cross', sectionId);
-    if (sectionId && skipRef.current.has(sectionId)) {
-      el.dataset.swarmBuilt = '1';
-      return;
-    }
-    sfx().press(rect.left, window.innerWidth);
-    showDrawBox(rect);
-    await sleep(85 / speedRef.current, sectionId);
-    hideDrawBox();
+    hoverOthers(cursorIx, rect);
     if (isDup && prevRect) {
-      const sp = spacingRef.current;
-      if (sp) {
-        sp.style.display = 'block';
-        sp.style.left = `${rect.left}px`;
-        sp.style.top = `${Math.max(8, rect.top - 26)}px`;
-        const gap = Math.round(
-          Math.abs(rect.top - prevRect.bottom) > 4
-            ? Math.abs(rect.top - prevRect.bottom)
-            : Math.abs(rect.left - prevRect.right),
-        );
-        sp.textContent = `↔ ${gap}px`;
-        await sleep(75 / speedRef.current, sectionId);
-        sp.style.display = 'none';
+      await moveCursorTo(
+        cursorIx,
+        prevRect.left + Math.min(40, prevRect.width * 0.3),
+        prevRect.top + Math.min(24, prevRect.height * 0.3),
+        'arrow',
+        sectionId,
+      );
+      if (sectionId && skipRef.current.has(sectionId)) {
+        el.dataset.swarmBuilt = '1';
+        return;
       }
+      sfx().press(prevRect.left, window.innerWidth);
+      await dragDuplicateWithCursor(cursorIx, prevRect, rect, 130, sectionId);
       sfx().place(
         'dup',
         rect.left + rect.width / 2,
@@ -359,18 +425,24 @@ export default function SwarmRebuild() {
         window.innerWidth,
         window.innerHeight,
       );
+      releaseEl(el, null, prevRect);
+    } else {
+      await moveCursorTo(cursorIx, rect.left + 6, rect.top + 6, 'cross', sectionId);
+      if (sectionId && skipRef.current.has(sectionId)) {
+        el.dataset.swarmBuilt = '1';
+        return;
+      }
+      sfx().press(rect.left, window.innerWidth);
+      await dragBoxWithCursor(cursorIx, rect, 125, sectionId);
+      releaseEl(el, kind === 'image' ? 'image' : 'rect', null);
     }
-    releaseEl(el, kind === 'image' ? 'image' : 'rect', isDup ? prevRect : null);
-    await sleep(45 / speedRef.current, sectionId);
+    await sleep(30 / speedRef.current, sectionId);
   };
 
-  // Items drawn one-by-one inside a section (victims/projects/process/skills).
-  // Skills uses a direct-child selector (`#skills .grid > .win98-inset`) so
-  // nested progress bars inside the 4 skill cards are never double-counted.
   const itemSelectorFor = (section) => {
     if (section.id === 'projects') return '#projects .win98-window';
     if (section.id === 'victims') return '#victims .win98-window';
-    if (section.id === 'process') return '#process .win98-box';
+    if (section.id === 'process') return '#process .grid > .win98-box';
     if (section.id === 'skills') return '#skills .grid > .win98-inset';
     return null;
   };
@@ -380,35 +452,103 @@ export default function SwarmRebuild() {
     return sel ? Array.from(document.querySelectorAll(sel)) : [];
   };
 
+  // Discover the granular sub-elements inside a section so we can hide
+  // them individually (`data-swarm-shell` / `data-swarm-part`), unlock
+  // the outer `<section>` right away (`data-swarm-building="1"`), and
+  // reveal each piece live on screen as its cursor draws/types it.
+  const prepareSectionParts = (section, el) => {
+    let shell = null;
+    const heading =
+      el.querySelector('h1, h2') || (section.id === 'skills' ? el.querySelector('.border-b') : null);
+    const extras = [];
+
+    if (section.id === 'nav') {
+      const bars = Array.from(el.children);
+      if (bars[0]) shell = bars[0];
+      if (bars[1]) extras.push({ el: bars[1], kind: 'rect' });
+    } else if (section.id === 'hero') {
+      shell = el.querySelector(':scope > .win98-window') || el;
+      const leftCol = el.querySelector('.md\\:col-span-7');
+      if (leftCol) {
+        Array.from(leftCol.children).forEach((child) => {
+          if (heading && child.contains(heading)) return;
+          extras.push({ el: child, kind: 'rect' });
+        });
+      }
+      const rightBox = el.querySelector('.md\\:col-span-5 .win98-box');
+      if (rightBox) extras.push({ el: rightBox, kind: 'image' });
+    } else if (section.id === 'skills') {
+      shell = el.querySelector(':scope > .win98-window') || el;
+    } else if (section.id === 'projects' || section.id === 'victims') {
+      shell = el.querySelector(':scope > .win98-box');
+      if (section.id === 'victims') {
+        const moreBtn = el.querySelector(':scope > .text-center');
+        if (moreBtn) extras.push({ el: moreBtn, kind: 'rect' });
+      }
+    } else if (section.id === 'process') {
+      shell = el.querySelector(':scope > .win98-window') || el;
+    } else if (section.id === 'contact') {
+      shell = el.querySelector(':scope > .win98-window') || el;
+      const form = el.querySelector('form');
+      if (form) extras.push({ el: form, kind: 'rect' });
+    }
+
+    if (shell && shell !== el && !shell.dataset.swarmBuilt) {
+      shell.dataset.swarmShell = '1';
+    }
+    if (heading && !heading.dataset.swarmBuilt) {
+      heading.dataset.swarmPart = '1';
+    }
+    extras.forEach(({ el: node }) => {
+      if (node && !node.dataset.swarmBuilt) {
+        node.dataset.swarmPart = '1';
+      }
+    });
+    sectionItems(section).forEach((item) => {
+      if (!item.dataset.swarmBuilt) {
+        item.dataset.swarmPart = '1';
+      }
+    });
+
+    // Unlock the outer <section> container immediately so every child piece
+    // becomes visible on screen the exact moment its cursor finishes!
+    el.dataset.swarmBuilding = '1';
+
+    return { shell, heading, extras };
+  };
+
+  const releaseAllPartsInEl = (section, el) => {
+    if (!el) return;
+    delete el.dataset.swarmBuilding;
+    el.dataset.swarmBuilt = '1';
+    el.style.clipPath = '';
+    el.querySelectorAll('[data-swarm-shell], [data-swarm-part], h1, h2').forEach((node) => {
+      node.dataset.swarmBuilt = '1';
+      node.style.clipPath = '';
+    });
+    sectionItems(section).forEach((item) => {
+      item.dataset.swarmBuilt = '1';
+      item.style.clipPath = '';
+    });
+  };
+
   const checkAllDone = () => {
     if (builtRef.current.size >= SECTIONS.length && phaseRef.current === 'building') {
       updatePhase('done');
       setCurrentLabel('সব তৈরি!');
-      hideDrawBox();
-      if (guideRef.current) guideRef.current.style.display = 'none';
-      if (caretRef.current) caretRef.current.style.display = 'none';
-      if (spacingRef.current) spacingRef.current.style.display = 'none';
+      hideOverlays();
       sfx().finale();
     }
   };
 
-  // Mark a whole section (and every item inside it) built at once, with
-  // no choreography. Used for the hard timeout and for catching up when
-  // the visitor has already scrolled past a section.
-  // NOTE: Instant-release intentionally does NOT set heroVisibleAtRef
-  // unless `markHeroSeenIfInView` is explicitly requested (e.g. when the
-  // hero's own 4s budget expires while on screen).
   const releaseSectionNow = (section, markHeroSeenIfInView = false) => {
     const el = getSectionEl(section.id);
     if (el) {
-      sectionItems(section).forEach((item) => {
-        item.dataset.swarmBuilt = '1';
-      });
-      el.dataset.swarmBuilt = '1';
+      releaseAllPartsInEl(section, el);
       if (section.id === 'hero' && markHeroSeenIfInView && heroVisibleAtRef.current === null) {
         const r = el.getBoundingClientRect();
         if (r.bottom > 0 && r.top < window.innerHeight) {
-          heroVisibleAtRef.current = Date.now();
+          heroVisibleAtRef.current = nowMs();
         }
       }
     }
@@ -421,10 +561,6 @@ export default function SwarmRebuild() {
     checkAllDone();
   };
 
-  // Earlier sections that the visitor has scrolled completely past
-  // (above the viewport, r.bottom <= 0) are released instantly so the
-  // section currently on screen builds right away. Sections that are
-  // STILL visible in the viewport (r.bottom > 0) are never killed here.
   const releaseEarlierSections = (section) => {
     const ix = SECTIONS.findIndex((s) => s.id === section.id);
     for (let i = 0; i < ix; i++) {
@@ -442,22 +578,16 @@ export default function SwarmRebuild() {
     }
   };
 
-  // Find the nearest unbuilt section to the current viewport so
-  // scroll-end auto-resume always targets the section closest to where
-  // the visitor stopped scrolling.
   const findNearestUnbuiltSection = () => {
     const unbuilt = SECTIONS.filter((s) => !builtRef.current.has(s.id));
     if (unbuilt.length === 0) return null;
     const vh = window.innerHeight;
-    // 1. Prefer an unbuilt section already intersecting the viewport.
     for (const s of unbuilt) {
       const el = getSectionEl(s.id);
       if (!el) continue;
       const r = el.getBoundingClientRect();
       if (r.bottom > 0 && r.top < vh) return s;
     }
-    // 2. Otherwise pick the unbuilt section with minimum vertical distance
-    // to the viewport, preferring sections at or below the top of the screen.
     let best = unbuilt[0];
     let bestDist = Infinity;
     for (const s of unbuilt) {
@@ -475,7 +605,7 @@ export default function SwarmRebuild() {
 
   const smoothScrollToEl = (el) => {
     if (!el) return;
-    programmaticScrollUntilRef.current = Date.now() + 1100;
+    programmaticScrollUntilRef.current = nowMs() + 1100;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
@@ -485,9 +615,6 @@ export default function SwarmRebuild() {
     scrollEndTimerRef.current = setTimeout(() => {
       scrollEndTimerRef.current = null;
       if (phaseRef.current !== 'building' || tourRef.current) return;
-      // If a section is still building or queued when the scroll-end timer
-      // fires, do NOT drop the resume on the floor — poll again shortly
-      // so the next section starts within ~1-2s of the current build ending.
       if (pendingRef.current > 0 || buildingRef.current.size > 0) {
         scheduleResume(250);
         return;
@@ -509,9 +636,8 @@ export default function SwarmRebuild() {
     }, Math.max(120, wait));
   };
 
-  // One build attempt with a hard 4s timer and try/finally bookkeeping.
   const buildSection = async (section) => {
-    buildStartRef.current.set(section.id, Date.now());
+    buildStartRef.current.set(section.id, nowMs());
     queuedAtRef.current.delete(section.id);
     const budgetMs = Math.min(SECTION_BUDGET_MS, SECTION_BUDGET_MS / speedRef.current);
     const budgetTimer = setTimeout(() => {
@@ -527,9 +653,6 @@ export default function SwarmRebuild() {
       buildingRef.current.delete(section.id);
       buildStartRef.current.delete(section.id);
       pendingRef.current = Math.max(0, pendingRef.current - 1);
-      // If the queue just became completely idle while still in `building`
-      // phase and the auto-tour was stopped by user scroll, schedule
-      // auto-resume so the queue never stalls at 4/7 -> 5/7.
       if (
         phaseRef.current === 'building' &&
         pendingRef.current === 0 &&
@@ -545,10 +668,10 @@ export default function SwarmRebuild() {
 
   const buildSectionOnce = async (section) => {
     const token = tokenRef.current;
-    const startedAt = Date.now();
+    const startedAt = nowMs();
     const budgetMs = Math.min(SECTION_BUDGET_MS, SECTION_BUDGET_MS / speedRef.current);
     const aborted = () => tokenRef.current !== token || skipRef.current.has(section.id);
-    const overBudget = () => Date.now() - startedAt > budgetMs;
+    const overBudget = () => nowMs() - startedAt > budgetMs;
     const finishFast = () => releaseSectionNow(section, section.id === 'hero');
     if (skipRef.current.has(section.id) || builtRef.current.has(section.id)) return;
 
@@ -558,36 +681,41 @@ export default function SwarmRebuild() {
       return;
     }
     setCurrentLabel(`${section.label} বানানো হচ্ছে…`);
-    const rect = el.getBoundingClientRect();
     const lead = SECTIONS.findIndex((s) => s.id === section.id) % COLORS.length;
 
-    // 1. Draw the section box with a crosshair + live W x H badge.
-    await moveCursorTo(lead, rect.left + 10, rect.top + 10, 'cross', section.id);
+    // Unlock the outer <section> right away and gate its individual inner
+    // pieces so each piece appears on screen the moment a cursor draws it!
+    const { shell, heading, extras } = prepareSectionParts(section, el);
+    const shellEl = shell || el;
+    const shellRect = shellEl.getBoundingClientRect();
+
+    // 1. Drag out the outer window shell / header bar and reveal it immediately!
+    await moveCursorTo(lead, shellRect.left + 8, shellRect.top + 8, 'cross', section.id);
     if (aborted()) return;
     if (overBudget()) return finishFast();
-    hoverOthers(lead, rect);
-    sfx().press(rect.left, window.innerWidth);
-    showDrawBox(rect);
-    await sleep(110 / speedRef.current, section.id);
-    hideDrawBox();
+    hoverOthers(lead, shellRect);
+    sfx().press(shellRect.left, window.innerWidth);
+    await dragBoxWithCursor(lead, shellRect, 145, sectionIdOrNull(section));
     if (aborted()) return;
+    releaseEl(shellEl, 'rect', null);
 
-    // 2. Ruler guide + typing across the heading.
-    const heading = el.querySelector('h1, h2');
+    // 2. Pen ruler guide + live left-to-right character typing on the heading.
     if (heading) {
       const hRect = heading.getBoundingClientRect();
       if (hRect.width > 0 && hRect.bottom > 0 && hRect.top < window.innerHeight) {
-        await showGuide(lead, hRect, section.id);
+        await showGuide((lead + 1) % COLORS.length, hRect, section.id);
         if (aborted()) return;
         if (overBudget()) return finishFast();
-        await typeAcross(lead, hRect, heading.textContent || '', section.id);
+        await typeAcross(lead, heading, hRect, heading.textContent || '', section.id);
         if (aborted()) return;
         if (overBudget()) return finishFast();
+      } else {
+        heading.dataset.swarmBuilt = '1';
       }
     }
 
-    // 3. Build repeated items inside (capped at MAX_CHOREOGRAPHED_ITEMS so
-    // an expanded 11-card Victims section still completes well under 4s).
+    // 3. Draw repeated cards inside (first card drawn with crosshair box,
+    // subsequent cards Alt-dragged as duplicates with spacing guide).
     const allItems = sectionItems(section);
     const choreographed = allItems.slice(0, MAX_CHOREOGRAPHED_ITEMS);
     let prevRect = null;
@@ -604,54 +732,40 @@ export default function SwarmRebuild() {
       prevRect = item.getBoundingClientRect();
     }
 
-    // Contact form: ONE box for the whole form — never type into each field.
-    if (section.id === 'contact') {
-      const form = el.querySelector('form');
-      if (form) {
-        if (aborted()) return;
-        if (overBudget()) return finishFast();
-        await drawItem(lead, form, 'rect', false, null, section.id);
-      }
-    }
-
-    // Hero preview image box: draw it as an image unit so the hero build
-    // feels rich and lands right inside the ~3-5s initial load target.
-    if (section.id === 'hero') {
-      const imgBox = el.querySelector('img');
-      if (imgBox) {
-        if (aborted()) return;
-        if (overBudget()) return finishFast();
-        await drawItem((lead + 1) % COLORS.length, imgBox, 'image', false, null, section.id);
-      }
+    // 4. Draw section-specific inner pieces (Hero image/description/buttons,
+    // Contact form as one box, Navbar taskbar, Victims load-more button).
+    for (let j = 0; j < extras.length; j++) {
+      if (aborted()) return;
+      if (overBudget()) return finishFast();
+      const { el: partEl, kind } = extras[j];
+      if (!partEl || partEl.dataset.swarmBuilt) continue;
+      const cursorIx = (lead + j + 1) % COLORS.length;
+      await drawItem(cursorIx, partEl, kind, false, null, section.id);
     }
 
     if (aborted()) return;
 
-    // 4. Release the real section and guarantee all child items are marked
-    // built (including any extra cards or cards mounted mid-build).
-    sectionItems(section).forEach((item) => {
-      item.dataset.swarmBuilt = '1';
-    });
-    releaseEl(el, 'rect', null);
+    // 5. Finalize section and guarantee all child parts are marked built.
+    releaseAllPartsInEl(section, el);
 
-    // Hero-visible gate: record heroVisibleAtRef ONLY when the hero's own
-    // build finishes while the hero is actually in the viewport.
     if (section.id === 'hero') {
       const r = el.getBoundingClientRect();
       if (r.bottom > 0 && r.top < window.innerHeight) {
-        heroVisibleAtRef.current = Date.now();
+        heroVisibleAtRef.current = nowMs();
       }
     }
     builtRef.current.add(section.id);
     setBuiltCount(builtRef.current.size);
-    await sleep(50 / speedRef.current, section.id);
+    await sleep(40 / speedRef.current, section.id);
     checkAllDone();
   };
+
+  const sectionIdOrNull = (section) => (section ? section.id : null);
 
   const enqueueBuild = (section) => {
     if (builtRef.current.has(section.id) || buildingRef.current.has(section.id)) return queueRef.current;
     buildingRef.current.add(section.id);
-    queuedAtRef.current.set(section.id, Date.now());
+    queuedAtRef.current.set(section.id, nowMs());
     pendingRef.current += 1;
     queueRef.current = queueRef.current
       .then(() => buildSection(section))
@@ -660,7 +774,7 @@ export default function SwarmRebuild() {
         if (!retryRef.current.has(section.id)) {
           retryRef.current.add(section.id);
           buildingRef.current.add(section.id);
-          queuedAtRef.current.set(section.id, Date.now());
+          queuedAtRef.current.set(section.id, nowMs());
           pendingRef.current += 1;
           return buildSection(section).catch((err2) => {
             console.warn('[swarm] build failed twice, force-releasing section:', section.id, err2);
@@ -674,15 +788,18 @@ export default function SwarmRebuild() {
   };
 
   const markAllBuilt = () => {
-    document.querySelectorAll('.reveal, nav').forEach((el) => {
+    document.querySelectorAll('.reveal, nav, [data-swarm-shell], [data-swarm-part]').forEach((el) => {
+      delete el.dataset.swarmBuilding;
       el.dataset.swarmBuilt = '1';
+      el.style.clipPath = '';
     });
     document
       .querySelectorAll(
-        '#projects .win98-window, #victims .win98-window, #skills .grid > .win98-inset, #process .win98-box',
+        '#projects .win98-window, #victims .win98-window, #skills .grid > .win98-inset, #process .grid > .win98-box',
       )
       .forEach((el) => {
         el.dataset.swarmBuilt = '1';
+        el.style.clipPath = '';
       });
     SECTIONS.forEach((s) => builtRef.current.add(s.id));
     setBuiltCount(builtRef.current.size);
@@ -705,10 +822,7 @@ export default function SwarmRebuild() {
       sectionWatcherRef.current.disconnect();
       sectionWatcherRef.current = null;
     }
-    hideDrawBox();
-    if (guideRef.current) guideRef.current.style.display = 'none';
-    if (caretRef.current) caretRef.current.style.display = 'none';
-    if (spacingRef.current) spacingRef.current.style.display = 'none';
+    hideOverlays();
   };
 
   const goLive = () => {
@@ -733,7 +847,15 @@ export default function SwarmRebuild() {
     tourRef.current = false;
     setTourOn(false);
     cleanupRunObservers();
-    document.querySelectorAll('[data-swarm-built]').forEach((el) => delete el.dataset.swarmBuilt);
+    document
+      .querySelectorAll('[data-swarm-built], [data-swarm-building], [data-swarm-shell], [data-swarm-part]')
+      .forEach((el) => {
+        delete el.dataset.swarmBuilt;
+        delete el.dataset.swarmBuilding;
+        delete el.dataset.swarmShell;
+        delete el.dataset.swarmPart;
+        el.style.clipPath = '';
+      });
     builtRef.current = new Set();
     buildingRef.current = new Set();
     buildStartRef.current = new Map();
@@ -755,7 +877,6 @@ export default function SwarmRebuild() {
 
   const startRun = async (isReplay) => {
     const token = tokenRef.current;
-    // Anything that is not a build target (e.g. ParticleText wrapper) stays visible.
     document.querySelectorAll('.reveal').forEach((el) => {
       if (!SECTION_IDS.includes(el.id)) el.dataset.swarmBuilt = '1';
     });
@@ -763,7 +884,6 @@ export default function SwarmRebuild() {
     sfx().init();
     sfx().intro();
 
-    // Intro: cursors orbit the top center, then fan out.
     const cx = window.innerWidth / 2;
     const cy = 110;
     const orbitStart = perfMs();
@@ -776,15 +896,13 @@ export default function SwarmRebuild() {
         c.tx = cx + Math.cos(a) * r;
         c.ty = cy + Math.sin(a) * r * 0.6;
       });
-      if (perfMs() - orbitStart < 380) requestAnimationFrame(orbit);
+      if (perfMs() - orbitStart < 340) requestAnimationFrame(orbit);
     };
     orbit();
-    await sleep((isReplay ? 280 : 380) / speedRef.current);
+    await sleep((isReplay ? 240 : 340) / speedRef.current);
     if (tokenRef.current !== token) return;
     sfx().start();
 
-    // Enqueue nav and hero FIRST so an initial intersection of a lower
-    // section on tall viewports never jumps ahead of the hero on load.
     enqueueBuild(SECTIONS[0]);
     enqueueBuild(SECTIONS[1]);
 
@@ -806,10 +924,6 @@ export default function SwarmRebuild() {
       if (el) observer.observe(el);
     });
 
-    // MutationObserver handles:
-    // 1. Late-mounted sections (windows restored from closed/minimised state).
-    // 2. Late-mounted items inside already-built sections (e.g. Victims cards
-    //    4-11 after clicking "load more", or restored project/victim cards).
     if (window.MutationObserver) {
       const watcher = new MutationObserver(() => {
         SECTIONS.forEach((sec) => {
@@ -824,9 +938,6 @@ export default function SwarmRebuild() {
           }
           if (sec.id !== 'nav' && sec.id !== 'hero') {
             observer.observe(el);
-            // Only auto-enqueue from MutationObserver after the hero has built
-            // or if the visitor has scrolled down, so cursor DOM updates during
-            // the initial hero build don't prematurely trigger lower sections.
             if (builtRef.current.has('hero') || window.scrollY > 80) {
               const r = el.getBoundingClientRect();
               if (r.bottom > 0 && r.top < window.innerHeight * 0.9) {
@@ -841,9 +952,6 @@ export default function SwarmRebuild() {
       sectionWatcherRef.current = watcher;
     }
 
-    // Auto-tour gate: starts 2.5s (scaled by speed) after the hero's own
-    // build has visibly completed in the viewport, provided the visitor has
-    // not scrolled away from the top (scrollY < 100).
     const waitHero = setInterval(() => {
       if (tokenRef.current !== token || phaseRef.current !== 'building') {
         clearInterval(waitHero);
@@ -853,7 +961,7 @@ export default function SwarmRebuild() {
       const requiredDelay = AUTO_TOUR_DELAY_MS / speedRef.current;
       if (
         seenAt !== null &&
-        Date.now() - seenAt >= requiredDelay &&
+        nowMs() - seenAt >= requiredDelay &&
         !userScrolledRef.current &&
         window.scrollY < 100
       ) {
@@ -879,14 +987,12 @@ export default function SwarmRebuild() {
       }
       smoothScrollToEl(el);
       enqueueBuild(next);
-      // Linger at least MIN_TOUR_DWELL_MS (scaled by speed) per section and
-      // wait for the section's build to finish (up to 4.2s cap).
-      const arrived = Date.now();
+      const arrived = nowMs();
       const minDwell = MIN_TOUR_DWELL_MS / speedRef.current;
       const maxWait = Math.max(minDwell + 400, SECTION_BUDGET_MS + 300);
       while (tourRef.current && tokenRef.current === token) {
         const done = builtRef.current.has(next.id);
-        const elapsed = Date.now() - arrived;
+        const elapsed = nowMs() - arrived;
         if (done && elapsed >= minDwell) break;
         if (elapsed >= maxWait) {
           if (!done) releaseSectionNow(next, next.id === 'hero');
@@ -900,7 +1006,6 @@ export default function SwarmRebuild() {
     setTourOn(false);
   };
 
-  // Cursor animation loop (imperative — no React re-render at 60fps).
   useEffect(() => {
     if (reducedMotion) return undefined;
     const tick = () => {
@@ -912,8 +1017,8 @@ export default function SwarmRebuild() {
           c.tx = mouse.x + (i - 1.5) * 26;
           c.ty = mouse.y + (i % 2 === 0 ? -14 : 16);
         }
-        c.x += (c.tx - c.x) * 0.18;
-        c.y += (c.ty - c.y) * 0.18;
+        c.x += (c.tx - c.x) * 0.22;
+        c.y += (c.ty - c.y) * 0.22;
         el.style.transform = `translate(${c.x}px, ${c.y}px)`;
       });
       rafRef.current = requestAnimationFrame(tick);
@@ -922,7 +1027,6 @@ export default function SwarmRebuild() {
     return () => cancelAnimationFrame(rafRef.current);
   }, [reducedMotion]);
 
-  // Main run + global keys + sound unlock + watchdog.
   useEffect(() => {
     if (reducedMotion) return undefined;
     tokenRef.current = 0;
@@ -946,9 +1050,7 @@ export default function SwarmRebuild() {
       }
     };
     const onScroll = () => {
-      // Ignore programmatic smooth-scrolls triggered by the tour or by
-      // scroll-end auto-resume so the tour never cancels itself.
-      if (tourRef.current || Date.now() < programmaticScrollUntilRef.current) return;
+      if (tourRef.current || nowMs() < programmaticScrollUntilRef.current) return;
       if (window.scrollY > 90) userScrolledRef.current = true;
       if (phaseRef.current === 'building') {
         scheduleResume();
@@ -983,11 +1085,9 @@ export default function SwarmRebuild() {
     window.addEventListener('wheel', onUserScrollInput, { passive: true });
     window.addEventListener('touchmove', onUserScrollInput, { passive: true });
 
-    // 10s Watchdog: force-releases any section stuck in `building` OR stuck
-    // in the queue longer than WATCHDOG_MS, and rescues an idle queue.
     const watchdog = setInterval(() => {
       if (phaseRef.current !== 'building') return;
-      const now = Date.now();
+      const now = nowMs();
       buildStartRef.current.forEach((startedAt, id) => {
         if (now - startedAt > WATCHDOG_MS) {
           const sec = SECTIONS.find((s) => s.id === id);
@@ -1031,9 +1131,7 @@ export default function SwarmRebuild() {
       window.removeEventListener('wheel', onUserScrollInput);
       window.removeEventListener('touchmove', onUserScrollInput);
       document.documentElement.classList.remove('swarm-active');
-      document.querySelectorAll('[data-swarm-built]').forEach((el) => {
-        el.dataset.swarmBuilt = '1';
-      });
+      markAllBuilt();
       if (soundRef.current) soundRef.current.close();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1095,6 +1193,7 @@ export default function SwarmRebuild() {
         <div ref={boxRef} className="swarm-draw-box">
           <span ref={badgeRef} className="swarm-size-badge" />
         </div>
+        <div ref={dupBoxRef} className="swarm-dup-box" />
         <div ref={guideRef} className="swarm-guide" />
         <div ref={caretRef} className="swarm-caret" />
         <div ref={spacingRef} className="swarm-spacing" />
