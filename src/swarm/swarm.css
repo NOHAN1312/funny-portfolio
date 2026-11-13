@@ -1,10 +1,14 @@
 /* Swarm Rebuild — Joratali Engineering.
-   Ghost state: while the swarm is active, target sections stay in the
-   DOM (so SEO and screen readers still see them) but are invisible
-   until a cursor builds them. Once a section enters `data-swarm-building`,
-   its outer container becomes visible immediately so each inner piece
-   (window frame, heading typed character-by-character, cards, images,
-   buttons) appears live on screen the exact moment a cursor draws it. */
+   Authentic Figma-style multiplayer rebuild layer:
+   - Ghost state keeps target sections in the DOM for SEO while hiding
+     each section/piece until a cursor draws it.
+   - Dark 20px top & left rulers with tick marks and blue selection bands.
+   - Grey wireframe placeholder boxes (#D9D9D9) + image placeholder icon
+     that grow from 0x0 under the crosshair cursor, then morph into the
+     real Win98 window / card / image.
+   - Full-viewport SVG overlay for selection boxes, 7x7 white corner
+     handles, dashed ruler projection lines, red alignment guides, and
+     red duplicate spacing measurements. */
 
 html.swarm-active .reveal:not([data-swarm-built]):not([data-swarm-building]) {
   opacity: 0 !important;
@@ -40,6 +44,12 @@ html.swarm-active nav[data-swarm-built] {
   transform: none !important;
 }
 
+/* Blue text-selection flash when a duplicated card's text is edited */
+.swarm-sel-flash {
+  background-color: rgba(13, 153, 255, 0.26) !important;
+  transition: background-color 0.2s ease;
+}
+
 /* ---- overlay layer (pointer-events: none, except the toolbar) ---- */
 .swarm-overlay {
   position: fixed;
@@ -49,122 +59,155 @@ html.swarm-active nav[data-swarm-built] {
   overflow: hidden;
 }
 
+/* Growing grey wireframe placeholders (#D9D9D9) while a cursor drags a box */
+.swarm-wf-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.swarm-wf-box {
+  position: absolute;
+  left: 0;
+  top: 0;
+  background-color: rgba(212, 208, 200, 0.88);
+  border: 1px solid rgba(128, 128, 128, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.swarm-wf-box svg.swarm-ph-icon {
+  width: 24px;
+  height: 24px;
+  opacity: 0.72;
+}
+
+/* SVG vector overlay for selection rects, 7x7 corner handles, ruler
+   projection lines, red guides, and red spacing lines */
+.swarm-ov-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* Dimension (W x H) and spacing gap badges */
+.swarm-badges {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.swarm-badge {
+  position: absolute;
+  transform: translate(-50%, 0);
+  padding: 2px 5px;
+  border-radius: 2px;
+  color: #fff;
+  font: 600 11px/15px Inter, system-ui, -apple-system, 'Segoe UI', monospace;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.28);
+}
+
+/* Blinking caret while a heading is being typed */
+.swarm-caret {
+  position: absolute;
+  width: 2px;
+  height: 24px;
+  background: #0d99ff;
+  display: none;
+  animation: swarm-caret-blink 0.85s steps(1) infinite;
+}
+
+@keyframes swarm-caret-blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+/* Figma-style top & left 20px dark rulers */
+.swarm-rulers {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.swarm-ruler {
+  position: absolute;
+  background: rgba(44, 44, 44, 0.94);
+  pointer-events: none;
+  transition: transform 0.22s ease, opacity 0.22s ease;
+}
+
+.swarm-ruler svg {
+  display: block;
+}
+
+.swarm-ruler-top {
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  border-bottom: 1px solid #3a3a3a;
+}
+
+.swarm-ruler-left {
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 20px;
+  border-right: 1px solid #3a3a3a;
+}
+
+.swarm-ruler-corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  background: #2c2c2c;
+  border-right: 1px solid #3a3a3a;
+  border-bottom: 1px solid #3a3a3a;
+  transition: opacity 0.22s ease;
+}
+
+.swarm-rtext {
+  font: 500 9px Inter, system-ui, -apple-system, sans-serif;
+  fill: #9a9a9a;
+}
+
+.swarm-rsel {
+  fill: #4db8ff;
+  font-weight: 700;
+}
+
+/* Cursors with hotspot alignment and press/tilt transform */
 .swarm-cursor {
   position: absolute;
   left: 0;
   top: 0;
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   will-change: transform;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
-  transition: opacity 0.4s ease;
+  pointer-events: none;
 }
 
 .swarm-cursor svg {
-  display: block;
-  width: 26px;
-  height: 26px;
-}
-
-/* Crosshair box being dragged out, with a live W x H badge and crosshair lines. */
-.swarm-draw-box {
   position: absolute;
-  border: 1.5px dashed #0d99ff;
-  background: rgba(13, 153, 255, 0.08);
-  box-sizing: border-box;
-  display: none;
-}
-
-.swarm-draw-box::before,
-.swarm-draw-box::after {
-  content: '';
-  position: fixed;
-  pointer-events: none;
-  background: rgba(13, 153, 255, 0.32);
-}
-
-.swarm-draw-box::before {
   left: 0;
-  right: 0;
-  top: var(--cross-y, 0px);
-  height: 1px;
-}
-
-.swarm-draw-box::after {
   top: 0;
-  bottom: 0;
-  left: var(--cross-x, 0px);
-  width: 1px;
-}
-
-/* Ghost duplicate box dragged from previous card to new card (Alt-drag). */
-.swarm-dup-box {
-  position: absolute;
-  border: 1.5px dashed #a259ff;
-  background: rgba(162, 89, 255, 0.1);
-  box-sizing: border-box;
-  display: none;
-}
-
-.swarm-size-badge {
-  position: absolute;
-  left: 50%;
-  top: -26px;
-  transform: translateX(-50%);
-  background: #0d99ff;
-  color: #fff;
-  font: 700 11px/1 monospace;
-  padding: 4px 7px;
-  border-radius: 3px;
-  white-space: nowrap;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* Figma-style ruler guide (red) that text snaps onto. */
-.swarm-guide {
-  position: absolute;
-  height: 0;
-  border-top: 1.5px solid #f24822;
-  display: none;
-}
-
-.swarm-guide::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: -4px;
-  width: 8px;
-  height: 8px;
-  background: #f24822;
-  border-radius: 50%;
-}
-
-/* Blinking caret while a heading is being "typed". */
-.swarm-caret {
-  position: absolute;
-  width: 2.5px;
-  height: 24px;
-  background: #f24e1e;
-  display: none;
-  animation: swarm-caret-blink 0.5s steps(1) infinite;
-}
-
-@keyframes swarm-caret-blink {
-  0%, 55% { opacity: 1; }
-  56%, 100% { opacity: 0; }
-}
-
-/* Red spacing measurement shown when a card is duplicated. */
-.swarm-spacing {
-  position: absolute;
-  background: #f24822;
-  color: #fff;
-  font: 700 11px/1 monospace;
-  padding: 4px 7px;
-  border-radius: 3px;
-  white-space: nowrap;
-  display: none;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  width: 28px;
+  height: 28px;
+  overflow: visible;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.34));
 }
 
 /* ---- Win98 toolbar (the only part of the overlay you can click) ---- */

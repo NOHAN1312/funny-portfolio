@@ -1,23 +1,25 @@
 /**
  * SwarmRebuild — Joratali Engineering.
  *
- * A swarm of four nameless, coloured cursors rebuilds this site live
- * piece-by-piece, inspired by the Swarm Rebuild Chrome extension:
- *  1. When a section begins building, its outer `<section>` container
- *     is unlocked immediately (`data-swarm-building="1"`) while its
- *     inner pieces (window shell, heading, cards, preview image,
- *     buttons, form) are individually gated (`data-swarm-part` /
- *     `data-swarm-shell`).
- *  2. A cursor drags a crosshair box diagonally from top-left to
- *     bottom-right with a live-counting W x H badge and full-viewport
- *     crosshair lines; the Win98 window shell appears immediately.
- *  3. A pen cursor snaps a red ruler guide under the heading, then an
- *     I-beam cursor + blinking caret types across the heading while
- *     revealing the text character-by-character from left to right.
- *  4. The four cursors draw/duplicate the inner cards, images, and
- *     controls one by one (with an Alt-drag ghost duplicate box and
- *     red spacing measurement), and each card becomes visible the
- *     exact instant its cursor finishes drawing it.
+ * Authentic Figma-style multiplayer rebuild engine inspired by the
+ * Swarm Rebuild Chrome extension, tailored for Joratali Engineering's
+ * Win98 windows:
+ *  - Four nameless, coloured cursors work in parallel inside each
+ *    section with curved human-like paths, hotspot-aligned tool icons
+ *    (arrow, double-arrow dup, crosshair, I-beam, pen, ew/ns resize),
+ *    and click-press scaling.
+ *  - Dark 20px top & left Figma rulers with tick marks, blue selection
+ *    range highlights, and dashed ruler projection lines.
+ *  - Each box/image starts as a growing #D9D9D9 wireframe placeholder
+ *    (with a mountain/sun icon for images, 4 white 7x7 corner handles,
+ *    and a live W x H badge) before morphing into the real Win98 card.
+ *  - Headings are typed character-by-character with a blinking caret,
+ *    step up in font scale (`grow`), and snap onto a red ruler guide
+ *    pulled out from the ruler.
+ *  - Repeated cards are Alt-dragged from the master card using the
+ *    double-arrow `dup` cursor, sliding physically from the master
+ *    card's position with dual red selection boxes and a red pixel
+ *    spacing line + badge, followed by a quick blue selection edit.
  */
 
 import { useEffect, useRef, useState } from 'react';
@@ -27,6 +29,9 @@ import './swarm.css';
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.5, 2, 3];
 const DEFAULT_SPEED_IX = 3; // 1x
 const COLORS = ['#F24E1E', '#A259FF', '#1ABCFE', '#0ACF83'];
+const BLUE = '#0D99FF';
+const RED = '#F24822';
+const RULER_SIZE = 20;
 
 const SECTION_BUDGET_MS = 4000;
 const WATCHDOG_MS = 10000;
@@ -48,24 +53,64 @@ const SECTION_IDS = SECTIONS.map((s) => s.id);
 
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const rand = (a, b) => a + Math.random() * (b - a);
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const f1 = (n) => Math.round(n * 10) / 10;
 const nowMs = () => Date.now();
 const perfMs = () => performance.now();
 
-function arrowSvg(color) {
-  return `<svg viewBox="0 0 24 24"><path d="M4.6 3.9 C4.2 3.1 4.9 2.4 5.7 2.8 L20.6 9.4 C21.5 9.8 21.4 11.1 20.4 11.3 L13.9 12.9 C13.4 13 13 13.4 12.9 13.9 L11.3 20.4 C11.1 21.4 9.8 21.5 9.4 20.6 Z" fill="${color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const ARROW_PATH =
+  'M4.6 3.9 C4.2 3.1 4.9 2.4 5.7 2.8 L20.6 9.4 C21.5 9.8 21.4 11.1 20.4 11.3 L13.9 12.9 C13.4 13 13 13.4 12.9 13.9 L11.3 20.4 C11.1 21.4 9.8 21.5 9.4 20.6 Z';
+
+const HOTSPOTS = {
+  arrow: [5, 3.5],
+  dup: [5, 3.5],
+  pen: [3, 3],
+  cross: [12, 12],
+  ibeam: [12, 12],
+  ew: [12, 12],
+  ns: [12, 12],
+};
+
+function renderCursorInnerSvg(shape, color) {
+  const stroke = 'stroke="#fff" stroke-width="1.5" stroke-linejoin="round"';
+  if (shape === 'dup') {
+    return (
+      `<path d="${ARROW_PATH}" transform="translate(4 3.5)" fill="#fff" stroke="${color}" stroke-width="1.3" stroke-linejoin="round"/>` +
+      `<path d="${ARROW_PATH}" fill="${color}" ${stroke}/>`
+    );
+  }
+  if (shape === 'cross') {
+    return (
+      `<g stroke-linecap="round"><path d="M12 3.5 V20.5 M3.5 12 H20.5" stroke="#fff" stroke-width="3.6"/>` +
+      `<path d="M12 3.5 V20.5 M3.5 12 H20.5" stroke="${color}" stroke-width="1.5"/></g>`
+    );
+  }
+  if (shape === 'ibeam') {
+    const d =
+      'M8.5 4.5 H10.5 Q12 4.5 12 6 Q12 4.5 13.5 4.5 H15.5 M12 6 V18 M8.5 19.5 H10.5 Q12 19.5 12 18 Q12 19.5 13.5 19.5 H15.5';
+    return (
+      `<g fill="none" stroke-linecap="round"><path d="${d}" stroke="#fff" stroke-width="3.6"/>` +
+      `<path d="${d}" stroke="${color}" stroke-width="1.5"/></g>`
+    );
+  }
+  if (shape === 'pen') {
+    return (
+      `<path d="M17.4 10.6 L20.6 13.8 L13.8 20.6 L10.6 17.4 Z" fill="${color}" ${stroke}/>` +
+      `<path d="M3 3 L13.1 6.3 L17.4 10.6 L10.6 17.4 L6.3 13.1 Z" fill="${color}" ${stroke}/>` +
+      `<path d="M3.6 3.6 L8.9 8.9" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/>` +
+      `<circle cx="10.2" cy="10.2" r="1.75" fill="none" stroke="#fff" stroke-width="1.2"/>`
+    );
+  }
+  if (shape === 'ew' || shape === 'ns') {
+    const rot = shape === 'ns' ? ' transform="rotate(90 12 12)"' : '';
+    return `<path d="M2.5 12 L7 7.5 V10.4 H17 V7.5 L21.5 12 L17 16.5 V13.6 H7 V16.5 Z"${rot} fill="${color}" ${stroke}/>`;
+  }
+  return `<path d="${ARROW_PATH}" fill="${color}" ${stroke}/>`;
 }
-function crossSvg(color) {
-  return `<svg viewBox="0 0 24 24"><g stroke-linecap="round"><path d="M12 3.5 V20.5 M3.5 12 H20.5" stroke="#fff" stroke-width="3.6"/><path d="M12 3.5 V20.5 M3.5 12 H20.5" stroke="${color}" stroke-width="1.5"/></g></svg>`;
-}
-function ibeamSvg(color) {
-  const d =
-    'M8.5 4.5 H10.5 Q12 4.5 12 6 Q12 4.5 13.5 4.5 H15.5 M12 6 V18 M8.5 19.5 H10.5 Q12 19.5 12 18 Q12 19.5 13.5 19.5 H15.5';
-  return `<svg viewBox="0 0 24 24"><g fill="none" stroke-linecap="round"><path d="${d}" stroke="#fff" stroke-width="3.6"/><path d="${d}" stroke="${color}" stroke-width="1.5"/></g></svg>`;
-}
-function penSvg(color) {
-  return `<svg viewBox="0 0 24 24"><path d="M17.4 10.6 L20.6 13.8 L13.8 20.6 L10.6 17.4 Z" fill="${color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M3 3 L13.1 6.3 L17.4 10.6 L10.6 17.4 L6.3 13.1 Z" fill="${color}" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/><path d="M3.6 3.6 L8.9 8.9" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/></svg>`;
-}
-const SHAPE_SVG = { arrow: arrowSvg, cross: crossSvg, ibeam: ibeamSvg, pen: penSvg };
+
+const IMG_PH_SVG =
+  '<svg class="swarm-ph-icon" viewBox="0 0 24 24" fill="none" stroke="#6E6E6E" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M4 18 L10 13 L14 16 L17 13.5 L21 17"/></svg>';
 
 export default function SwarmRebuild() {
   const [reducedMotion] = useState(
@@ -106,21 +151,31 @@ export default function SwarmRebuild() {
   const cursorElsRef = useRef([]);
   const cursorsRef = useRef(
     COLORS.map((color, i) => ({
+      id: i,
       color,
-      x: -100,
-      y: -100,
+      x: i % 2 === 0 ? -40 : window.innerWidth + 40,
+      y: 120 + i * 90,
       tx: window.innerWidth / 2,
-      ty: 120,
+      ty: 140,
       shape: 'arrow',
-      angle: (i / COLORS.length) * Math.PI * 2,
+      renderedShape: '',
+      press: 0,
+      angle: 0,
+      orbitAngle: (i / COLORS.length) * Math.PI * 2,
+      ov: null, // active selection/measurement overlays for this cursor
+      wf: null, // active growing wireframe box for this cursor
     })),
   );
-  const boxRef = useRef(null);
-  const badgeRef = useRef(null);
-  const dupBoxRef = useRef(null);
-  const guideRef = useRef(null);
+
+  // Active red guide lines on screen: { axis: 'x'|'y', pos, cur, op, flash, dragging, vis }
+  const guidesStateRef = useRef([]);
+  const rulersAlphaRef = useRef(0);
+
+  const wfLayerRef = useRef(null);
+  const ovSvgRef = useRef(null);
+  const badgesRef = useRef(null);
+  const rulersRef = useRef(null);
   const caretRef = useRef(null);
-  const spacingRef = useRef(null);
   const observerRef = useRef(null);
   const rafRef = useRef(0);
 
@@ -155,9 +210,9 @@ export default function SwarmRebuild() {
           resolve(true);
           return;
         }
-        setTimeout(step, Math.min(35, rem));
+        setTimeout(step, Math.min(25, rem));
       };
-      setTimeout(step, Math.min(35, total));
+      setTimeout(step, Math.min(25, total));
     });
   };
 
@@ -169,189 +224,380 @@ export default function SwarmRebuild() {
     return soundRef.current;
   };
 
-  const setCursorShape = (i, shape) => {
-    const c = cursorsRef.current[i];
-    if (!c || c.shape === shape) return;
-    c.shape = shape;
-    const el = cursorElsRef.current[i];
-    if (el) el.innerHTML = SHAPE_SVG[shape](c.color);
-  };
-
-  const moveCursorTo = async (i, x, y, shape, sectionId) => {
-    const c = cursorsRef.current[i];
+  // Move a cursor along a natural sine-arched curve (just like the
+  // Swarm Rebuild extension's moveTo generator) with optional per-step
+  // callback for live dragging.
+  const moveCursorCurved = async (cursorIx, targetX, targetY, opts = {}) => {
+    const c = cursorsRef.current[cursorIx];
     if (!c) return;
-    if (shape) setCursorShape(i, shape);
-    c.tx = clamp(x, 8, window.innerWidth - 8);
-    c.ty = clamp(y, 8, window.innerHeight - 8);
-    const dist = Math.hypot(c.tx - c.x, c.ty - c.y);
-    const dur = clamp(dist / 2.6, 55, 170) / speedRef.current;
-    await sleep(dur, sectionId);
+    if (opts.shape) c.shape = opts.shape;
+    const x0 = c.x;
+    const y0 = c.y;
+    const tx = clamp(targetX, 6, window.innerWidth - 6);
+    const ty = clamp(targetY, 6, window.innerHeight - 6);
+    const dist = Math.hypot(tx - x0, ty - y0);
+    if (dist < 1) {
+      c.x = tx;
+      c.y = ty;
+      c.tx = tx;
+      c.ty = ty;
+      if (opts.onStep) opts.onStep(1, tx, ty);
+      return;
+    }
+    const baseDur = opts.durationMs || clamp(65 + Math.sqrt(dist) * 4.2, 65, 210);
+    const dur = baseDur / speedRef.current;
+    const bend =
+      opts.drag || opts.bend === 0
+        ? 0
+        : (Math.random() < 0.5 ? -1 : 1) * rand(0.05, 0.14) * Math.min(dist, 360);
+    const steps = Math.max(4, Math.min(12, Math.round(dur / 16)));
+    const stepWait = dur / steps;
+    const dx = tx - x0;
+    const dy = ty - y0;
+    const L = Math.hypot(dx, dy) || 1;
+
+    for (let k = 1; k <= steps; k++) {
+      if (opts.sectionId && skipRef.current.has(opts.sectionId)) break;
+      const pct = k / steps;
+      const e = opts.drag ? easeInOut(pct) : easeOut(pct);
+      const off = Math.sin(Math.PI * e) * bend;
+      const cx = x0 + dx * e + (-dy / L) * off;
+      const cy = y0 + dy * e + (dx / L) * off;
+      c.x = cx;
+      c.y = cy;
+      c.tx = cx;
+      c.ty = cy;
+      if (opts.onStep) opts.onStep(e, cx, cy);
+      await sleep(stepWait, opts.sectionId);
+    }
+    c.x = tx;
+    c.y = ty;
+    c.tx = tx;
+    c.ty = ty;
+    if (opts.onStep) opts.onStep(1, tx, ty);
   };
 
-  const hoverOthers = (i, rect) => {
-    cursorsRef.current.forEach((c, j) => {
-      if (j === i) return;
-      c.tx = clamp(rect.left + rand(0.08, 0.92) * rect.width, 8, window.innerWidth - 8);
-      c.ty = clamp(rect.top + rand(0.08, 0.92) * rect.height, 8, window.innerHeight - 8);
+  const clickCursor = async (cursorIx, sectionId) => {
+    const c = cursorsRef.current[cursorIx];
+    if (!c) return;
+    c.press = 1;
+    sfx().press(c.x, window.innerWidth);
+    await sleep(40 / speedRef.current, sectionId);
+  };
+
+  // Pull a red alignment guide out from the Left or Top 20px Figma ruler.
+  const pullRulerGuide = async (cursorIx, axis, targetPos, sectionId) => {
+    const c = cursorsRef.current[cursorIx];
+    if (!c) return null;
+    rulersAlphaRef.current = 1;
+    const startX = axis === 'x' ? RULER_SIZE / 2 : clamp(window.innerWidth * 0.35, 60, window.innerWidth - 60);
+    const startY = axis === 'y' ? RULER_SIZE / 2 : clamp(window.innerHeight * 0.35, 60, window.innerHeight - 60);
+    await moveCursorCurved(cursorIx, startX, startY, { shape: 'arrow', durationMs: 90, sectionId });
+    if (sectionId && skipRef.current.has(sectionId)) return null;
+
+    c.press = 1;
+    c.shape = axis === 'x' ? 'ew' : 'ns';
+    const g = { axis, pos: targetPos, cur: axis === 'x' ? startX : startY, op: 1, flash: 0, dragging: true, vis: true };
+    guidesStateRef.current.push(g);
+
+    const endX = axis === 'x' ? targetPos : startX + 24;
+    const endY = axis === 'y' ? targetPos : startY + 24;
+    await moveCursorCurved(cursorIx, endX, endY, {
+      shape: axis === 'x' ? 'ew' : 'ns',
+      drag: true,
+      durationMs: 130,
+      sectionId,
+      onStep: (_e, cx, cy) => {
+        g.cur = axis === 'x' ? cx : cy;
+      },
     });
+    g.cur = targetPos;
+    g.dragging = false;
+    c.press = 0;
+    c.shape = 'arrow';
+    sfx().place('guide', endX, endY, 1, 1, window.innerWidth, window.innerHeight);
+    return g;
   };
 
-  // Drag a crosshair rectangle from top-left to bottom-right with the
-  // cursor physically pulling the bottom-right corner and the W x H
-  // badge counting up live.
-  const dragBoxWithCursor = async (cursorIx, rect, durationMs, sectionId) => {
-    const box = boxRef.current;
-    const badge = badgeRef.current;
+  // Draw a box or image the authentic Swarm Rebuild way:
+  // 1. Move to top-left in `cross` shape.
+  // 2. Drag diagonally while growing a #D9D9D9 wireframe placeholder
+  //    (with the mountain/sun icon for images), 4 white 7x7 corner
+  //    handles, dashed ruler lines, and a bottom W x H pill badge.
+  // 3. Switch to `arrow`, morph wireframe into the real styled DOM
+  //    element (`releaseEl`), and play the glass piano note.
+  const drawBoxAuthentic = async (cursorIx, el, kind, durationMs, sectionId) => {
     const c = cursorsRef.current[cursorIx];
-    if (!box || !badge || !c) return;
-    setCursorShape(cursorIx, 'cross');
-    const startX = clamp(rect.left, 4, window.innerWidth - 12);
-    const startY = clamp(rect.top, 4, window.innerHeight - 12);
-    const totalW = Math.max(8, Math.min(rect.width, window.innerWidth - startX - 4));
-    const totalH = Math.max(8, Math.min(rect.height, window.innerHeight - startY - 4));
-
-    box.style.display = 'block';
-    box.style.left = `${startX}px`;
-    box.style.top = `${startY}px`;
-    const steps = 6;
-    const stepWait = Math.max(14, durationMs / steps / speedRef.current);
-    for (let k = 1; k <= steps; k++) {
-      if (sectionId && skipRef.current.has(sectionId)) break;
-      const pct = k / steps;
-      const eased = 1 - Math.pow(1 - pct, 2);
-      const w = Math.max(6, Math.round(totalW * eased));
-      const h = Math.max(6, Math.round(totalH * eased));
-      box.style.width = `${w}px`;
-      box.style.height = `${h}px`;
-      box.style.setProperty('--cross-x', `${startX + w}px`);
-      box.style.setProperty('--cross-y', `${startY + h}px`);
-      badge.textContent = `${Math.round(rect.width * eased)} × ${Math.round(rect.height * eased)}`;
-      c.tx = clamp(startX + w, 8, window.innerWidth - 8);
-      c.ty = clamp(startY + h, 8, window.innerHeight - 8);
-      await sleep(stepWait, sectionId);
+    if (!c || !el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 4 || rect.height < 4 || rect.bottom < 0 || rect.top > window.innerHeight + 100) {
+      el.dataset.swarmBuilt = '1';
+      el.style.clipPath = '';
+      return;
     }
-    box.style.display = 'none';
+    rulersAlphaRef.current = 1;
+    const x0 = clamp(rect.left, 4, window.innerWidth - 16);
+    const y0 = clamp(rect.top, 4, window.innerHeight - 16);
+    const maxW = Math.max(8, Math.min(rect.width, window.innerWidth - x0 - 4));
+    const maxH = Math.max(8, Math.min(rect.height, window.innerHeight - y0 - 4));
+
+    await moveCursorCurved(cursorIx, x0, y0, { shape: 'cross', durationMs: 85, sectionId });
+    if (sectionId && skipRef.current.has(sectionId)) {
+      el.dataset.swarmBuilt = '1';
+      return;
+    }
+    c.press = 1;
+    sfx().press(x0, window.innerWidth);
+
+    const isImg = kind === 'image';
+    const curBox = { x: x0, y: y0, w: 4, h: 4, isImg };
+    c.wf = curBox;
+    c.ov = () => [
+      {
+        t: 'box',
+        b: curBox,
+        handles: true,
+        rulerLines: true,
+        badge: `${Math.round(curBox.w)} × ${Math.round(curBox.h)}`,
+      },
+    ];
+
+    await moveCursorCurved(cursorIx, x0 + maxW, y0 + maxH, {
+      shape: 'cross',
+      drag: true,
+      durationMs: durationMs || 140,
+      sectionId,
+      onStep: (e) => {
+        curBox.w = Math.max(6, maxW * e);
+        curBox.h = Math.max(6, maxH * e);
+      },
+    });
+
+    c.press = 0;
+    c.shape = 'arrow';
+    await sleep(45 / speedRef.current, sectionId);
+    c.wf = null;
+    releaseEl(el, isImg ? 'image' : 'rect', null);
+    await sleep(55 / speedRef.current, sectionId);
+    c.ov = null;
   };
 
-  // Alt-drag duplicate choreography: cursor starts on the previous card,
-  // drags a purple dashed ghost clone across to the new card while the
-  // red spacing badge measures the gap between them.
-  const dragDuplicateWithCursor = async (cursorIx, prevRect, rect, durationMs, sectionId) => {
-    const dup = dupBoxRef.current;
-    const sp = spacingRef.current;
+  // Alt-drag duplicate choreography (matches Swarm Rebuild's `*duplicate`
+  // and `*editText`):
+  // 1. Click the master/previous card (`arrow`), show selection handles.
+  // 2. Switch to double-arrow `dup` cursor.
+  // 3. Reveal the new card AT the previous card's offset (`translate(ox, oy)`)
+  //    and physically drag it across to its own slot while showing dual
+  //    red selection boxes and the red spacing measurement line + badge!
+  // 4. Flash blue text selection (`.swarm-sel-flash`) on its heading as
+  //    the card settles.
+  const duplicateCardAuthentic = async (cursorIx, prevRect, el, sectionId) => {
     const c = cursorsRef.current[cursorIx];
-    if (!dup || !c) return;
-    setCursorShape(cursorIx, 'arrow');
-    dup.style.display = 'block';
-    dup.style.width = `${Math.max(24, Math.min(rect.width, window.innerWidth - 16))}px`;
-    dup.style.height = `${Math.max(24, Math.min(rect.height, window.innerHeight - 16))}px`;
-
-    const gap = Math.round(
-      Math.abs(rect.top - prevRect.bottom) > 6
-        ? Math.abs(rect.top - prevRect.bottom)
-        : Math.abs(rect.left - prevRect.right),
-    );
-    if (sp) {
-      sp.style.display = 'block';
-      sp.style.left = `${clamp(rect.left + 8, 8, window.innerWidth - 90)}px`;
-      sp.style.top = `${clamp(rect.top - 24, 8, window.innerHeight - 32)}px`;
-      sp.textContent = `↔ ${gap}px`;
+    if (!c || !el || !prevRect) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 4 || rect.height < 4 || rect.bottom < 0 || rect.top > window.innerHeight + 100) {
+      el.dataset.swarmBuilt = '1';
+      return;
     }
 
-    const steps = 6;
-    const stepWait = Math.max(14, durationMs / steps / speedRef.current);
-    for (let k = 1; k <= steps; k++) {
-      if (sectionId && skipRef.current.has(sectionId)) break;
-      const pct = k / steps;
-      const eased = 1 - Math.pow(1 - pct, 2);
-      const curLeft = prevRect.left + (rect.left - prevRect.left) * eased;
-      const curTop = prevRect.top + (rect.top - prevRect.top) * eased;
-      dup.style.left = `${curLeft}px`;
-      dup.style.top = `${curTop}px`;
-      c.tx = clamp(curLeft + Math.min(80, rect.width * 0.35), 8, window.innerWidth - 8);
-      c.ty = clamp(curTop + Math.min(40, rect.height * 0.35), 8, window.innerHeight - 8);
-      await sleep(stepWait, sectionId);
+    const srcBox = { x: prevRect.left, y: prevRect.top, w: prevRect.width, h: prevRect.height };
+    const grabX = clamp(srcBox.x + Math.min(srcBox.w * 0.45, 70), 8, window.innerWidth - 8);
+    const grabY = clamp(srcBox.y + Math.min(srcBox.h * 0.4, 32), 8, window.innerHeight - 8);
+
+    await moveCursorCurved(cursorIx, grabX, grabY, { shape: 'arrow', durationMs: 80, sectionId });
+    if (sectionId && skipRef.current.has(sectionId)) {
+      el.dataset.swarmBuilt = '1';
+      return;
     }
-    dup.style.display = 'none';
-    if (sp) sp.style.display = 'none';
+    await clickCursor(cursorIx, sectionId);
+    c.ov = () => [{ t: 'box', b: srcBox, handles: true, badge: `${Math.round(srcBox.w)} × ${Math.round(srcBox.h)}` }];
+    await sleep(40 / speedRef.current, sectionId);
+
+    c.shape = 'dup';
+    c.press = 1;
+    const ox = prevRect.left - rect.left;
+    const oy = prevRect.top - rect.top;
+    el.dataset.swarmBuilt = '1';
+    el.style.transform = `translate(${ox}px, ${oy}px)`;
+
+    const curDstBox = { x: prevRect.left, y: prevRect.top, w: rect.width, h: rect.height };
+    c.ov = () => {
+      const overlays = [
+        { t: 'box', b: srcBox, color: 'red' },
+        { t: 'box', b: curDstBox, color: 'red' },
+      ];
+      const sp = computeSpacingMeasure(srcBox, curDstBox);
+      if (sp) overlays.push(sp);
+      return overlays;
+    };
+
+    const targetX = clamp(grabX - ox, 8, window.innerWidth - 8);
+    const targetY = clamp(grabY - oy, 8, window.innerHeight - 8);
+    await moveCursorCurved(cursorIx, targetX, targetY, {
+      shape: 'dup',
+      drag: true,
+      durationMs: 145,
+      sectionId,
+      onStep: (e) => {
+        const curOx = ox * (1 - e);
+        const curOy = oy * (1 - e);
+        el.style.transform = `translate(${f1(curOx)}px, ${f1(curOy)}px)`;
+        curDstBox.x = rect.left + curOx;
+        curDstBox.y = rect.top + curOy;
+      },
+    });
+
+    el.style.transform = '';
+    c.press = 0;
+    c.shape = 'arrow';
+    sfx().place('dup', rect.left + rect.width / 2, rect.top, rect.width, rect.height, window.innerWidth, window.innerHeight);
+
+    const finalBox = { x: rect.left, y: rect.top, w: rect.width, h: rect.height };
+    c.ov = () => [{ t: 'box', b: finalBox, handles: true, badge: `${Math.round(finalBox.w)} × ${Math.round(finalBox.h)}` }];
+
+    // Quick Figma text-selection flash on the duplicated card's title
+    const cardTitle = el.querySelector('h3, .win98-titlebar, span');
+    if (cardTitle) {
+      cardTitle.classList.add('swarm-sel-flash');
+      setTimeout(() => cardTitle.classList.remove('swarm-sel-flash'), 240);
+    }
+    await sleep(55 / speedRef.current, sectionId);
+    c.ov = null;
   };
 
-  const hideOverlays = () => {
-    if (boxRef.current) boxRef.current.style.display = 'none';
-    if (dupBoxRef.current) dupBoxRef.current.style.display = 'none';
-    if (guideRef.current) guideRef.current.style.display = 'none';
-    if (caretRef.current) caretRef.current.style.display = 'none';
-    if (spacingRef.current) spacingRef.current.style.display = 'none';
-  };
-
-  const showGuide = async (cursorIx, rect, sectionId) => {
-    const g = guideRef.current;
+  // Type a heading with text-frame drag, character-by-character clip-path
+  // reveal, blinking caret, font-scale stepping (`grow`), and guide snap!
+  const typeHeadingAuthentic = async (cursorIx, headingEl, guide, sectionId) => {
     const c = cursorsRef.current[cursorIx];
-    if (!g) return;
-    setCursorShape(cursorIx, 'pen');
-    const startX = Math.max(0, rect.left - 20);
-    const y = rect.bottom + 2;
-    const totalW = Math.min(window.innerWidth - startX, rect.width + 40);
-    g.style.display = 'block';
-    g.style.left = `${startX}px`;
-    g.style.top = `${y}px`;
-    g.style.width = '0px';
-    const steps = 5;
-    const stepWait = Math.max(12, 110 / steps / speedRef.current);
-    for (let k = 1; k <= steps; k++) {
-      if (sectionId && skipRef.current.has(sectionId)) break;
-      const w = (k / steps) * totalW;
-      g.style.width = `${w}px`;
-      if (c) {
-        c.tx = clamp(startX + w, 8, window.innerWidth - 8);
-        c.ty = clamp(y, 8, window.innerHeight - 8);
-      }
-      await sleep(stepWait, sectionId);
-    }
-    sfx().snap(rect.left + rect.width / 2, window.innerWidth);
-    await sleep(30 / speedRef.current, sectionId);
-    g.style.display = 'none';
-  };
-
-  // Type across a heading while revealing the heading's actual DOM text
-  // character-by-character from left to right behind the blinking caret.
-  const typeAcross = async (cursorIx, headingEl, rect, text, sectionId) => {
     const caret = caretRef.current;
-    const steps = Math.min(Math.max(text ? text.length : 12, 10), 18);
-    const c = cursorsRef.current[cursorIx];
-    if (!c) return;
-    setCursorShape(cursorIx, 'ibeam');
-    if (headingEl) {
+    if (!c || !headingEl) return;
+    const rect = headingEl.getBoundingClientRect();
+    if (rect.width <= 0 || rect.bottom <= 0 || rect.top >= window.innerHeight) {
       headingEl.dataset.swarmBuilt = '1';
-      headingEl.style.clipPath = 'inset(0 100% 0 0)';
+      return;
     }
+
+    const text = headingEl.textContent || '';
+    const initDx = guide ? 24 : 0;
+    headingEl.style.transform = initDx ? `translateX(${initDx}px) scale(0.84)` : 'scale(0.84)';
+    headingEl.style.transformOrigin = 'left center';
+
+    // 1. Drag a quick text frame with `cross` cursor
+    const frameBox = { x: rect.left + initDx, y: rect.top, w: 8, h: Math.min(rect.height, 36) };
+    await moveCursorCurved(cursorIx, frameBox.x, frameBox.y, { shape: 'cross', durationMs: 70, sectionId });
+    c.ov = () => [
+      {
+        t: 'box',
+        b: frameBox,
+        handles: true,
+        rulerLines: true,
+        badge: `${Math.round(frameBox.w)} × ${Math.round(frameBox.h)}`,
+      },
+    ];
+    await moveCursorCurved(cursorIx, frameBox.x + Math.min(rect.width, 260), frameBox.y + frameBox.h, {
+      shape: 'cross',
+      drag: true,
+      durationMs: 90,
+      sectionId,
+      onStep: (e) => {
+        frameBox.w = Math.max(12, Math.min(rect.width, 260) * e);
+      },
+    });
+
+    // 2. Type across character-by-character with I-beam and blinking caret
+    c.shape = 'ibeam';
+    headingEl.dataset.swarmBuilt = '1';
+    headingEl.style.clipPath = 'inset(0 100% 0 0)';
     if (caret) {
       caret.style.display = 'block';
       caret.style.top = `${rect.top + Math.max(0, (rect.height - 24) / 2)}px`;
     }
+
+    const steps = Math.min(Math.max(text.length, 10), 16);
     for (let k = 1; k <= steps; k++) {
       if (sectionId && skipRef.current.has(sectionId)) break;
       const pct = k / steps;
-      const x = rect.left + 4 + pct * Math.max(0, rect.width - 8);
+      const x = rect.left + initDx + 4 + pct * Math.max(0, rect.width - 8);
       const y = rect.top + rect.height / 2;
-      c.tx = clamp(x, 8, window.innerWidth - 8);
-      c.ty = clamp(y, 8, window.innerHeight - 8);
+      c.x = clamp(x, 8, window.innerWidth - 8);
+      c.y = clamp(y, 8, window.innerHeight - 8);
       if (caret) caret.style.left = `${x + 4}px`;
-      if (headingEl) {
-        const rightInset = Math.max(0, Math.round((1 - pct) * 100));
-        headingEl.style.clipPath = `inset(0 ${rightInset}% 0 0)`;
-      }
+      const rightInset = Math.max(0, Math.round((1 - pct) * 100));
+      headingEl.style.clipPath = `inset(0 ${rightInset}% 0 0)`;
+      frameBox.w = Math.max(24, rect.width * pct);
       const ch = text ? text[Math.floor(pct * (text.length - 1))] : '';
       sfx().key(x, window.innerWidth, `type-${cursorIx}`, 1, ch === ' ' ? 1 : 0);
-      if (k % 6 === 5) sfx().grow(Math.floor(k / 6), x, window.innerWidth);
-      await sleep(11 / speedRef.current, sectionId);
-    }
-    if (headingEl) {
-      headingEl.style.clipPath = '';
-      headingEl.dataset.swarmBuilt = '1';
+      await sleep(10 / speedRef.current, sectionId);
     }
     if (caret) caret.style.display = 'none';
-    setCursorShape(cursorIx, 'arrow');
+    headingEl.style.clipPath = '';
+
+    // 3. Font-size step-up (`grow`) + snap onto the red ruler guide!
+    c.shape = 'arrow';
+    const fullBox = {
+      x: rect.left + initDx,
+      y: rect.top,
+      w: rect.width,
+      h: rect.height,
+    };
+    c.ov = () => [
+      {
+        t: 'box',
+        b: fullBox,
+        handles: true,
+        rulerLines: true,
+        underline: { x: fullBox.x, y: fullBox.y + fullBox.h - 3, w: fullBox.w },
+        badge: `${Math.round(fullBox.w)} × ${Math.round(fullBox.h)}`,
+      },
+    ];
+    for (let s = 0; s < 2; s++) {
+      if (sectionId && skipRef.current.has(sectionId)) break;
+      const sc = s === 0 ? 0.93 : 1;
+      headingEl.style.transform = initDx ? `translateX(${initDx}px) scale(${sc})` : `scale(${sc})`;
+      sfx().grow(s, c.x, window.innerWidth);
+      await sleep(32 / speedRef.current, sectionId);
+    }
+
+    if (guide && initDx !== 0) {
+      await moveCursorCurved(cursorIx, rect.left, rect.top + rect.height / 2, {
+        shape: 'arrow',
+        drag: true,
+        durationMs: 75,
+        sectionId,
+        onStep: (e) => {
+          const dx = initDx * (1 - e);
+          headingEl.style.transform = `translateX(${f1(dx)}px)`;
+          fullBox.x = rect.left + dx;
+        },
+      });
+      guide.flash = 1;
+      sfx().snap(rect.left, window.innerWidth);
+    }
+    headingEl.style.transform = '';
+    headingEl.style.transformOrigin = '';
+    await sleep(40 / speedRef.current, sectionId);
+    c.ov = null;
+  };
+
+  const computeSpacingMeasure = (a, b) => {
+    const oy = Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y);
+    const ox = Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x);
+    if (oy > 6) {
+      const y = Math.max(a.y, b.y) + oy / 2;
+      const [l, r] = a.x < b.x ? [a, b] : [b, a];
+      const gap = Math.round(r.x - (l.x + l.w));
+      if (gap > 2 && gap < 400) {
+        return { t: 'measure', a: { x: l.x + l.w, y }, b: { x: r.x, y }, label: `${gap}` };
+      }
+    } else if (ox > 6) {
+      const x = Math.max(a.x, b.x) + ox / 2;
+      const [topB, botB] = a.y < b.y ? [a, b] : [b, a];
+      const gap = Math.round(botB.y - (topB.y + topB.h));
+      if (gap > 2 && gap < 400) {
+        return { t: 'measure', a: { x, y: topB.y + topB.h }, b: { x, y: botB.y }, label: `${gap}` };
+      }
+    }
+    return null;
   };
 
   const releaseEl = (el, kind, slideFromRect) => {
@@ -361,22 +607,22 @@ export default function SwarmRebuild() {
     const rect = el.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
       if (slideFromRect) {
-        const dx = clamp((slideFromRect.left - rect.left) * 0.28, -90, 90);
-        const dy = clamp((slideFromRect.top - rect.top) * 0.28, -90, 90);
+        const dx = clamp((slideFromRect.left - rect.left) * 0.25, -80, 80);
+        const dy = clamp((slideFromRect.top - rect.top) * 0.25, -80, 80);
         el.animate(
           [
-            { opacity: 0.35, transform: `translate(${dx}px, ${dy}px) scale(0.97)` },
-            { opacity: 1, transform: 'translate(0, 0) scale(1)' },
+            { opacity: 0.4, transform: `translate(${dx}px, ${dy}px)` },
+            { opacity: 1, transform: 'translate(0, 0)' },
           ],
-          { duration: 190 / speedRef.current, easing: 'ease-out' },
+          { duration: 180 / speedRef.current, easing: 'ease-out' },
         );
       } else {
         el.animate(
           [
-            { opacity: 0.2, clipPath: 'inset(0 0 85% 0)' },
+            { opacity: 0.25, clipPath: 'inset(0 0 88% 0)' },
             { opacity: 1, clipPath: 'inset(0 0 0% 0)' },
           ],
-          { duration: 200 / speedRef.current, easing: 'ease-out' },
+          { duration: 210 / speedRef.current, easing: ' cubic-bezier(0.2, 0.75, 0.2, 1)' },
         );
       }
     }
@@ -393,50 +639,20 @@ export default function SwarmRebuild() {
     }
   };
 
-  const drawItem = async (cursorIx, el, kind, isDup, prevRect, sectionId) => {
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    if (rect.width < 4 || rect.height < 4 || rect.bottom < 0 || rect.top > window.innerHeight + 80) {
-      el.dataset.swarmBuilt = '1';
-      el.style.clipPath = '';
-      return;
-    }
-    hoverOthers(cursorIx, rect);
-    if (isDup && prevRect) {
-      await moveCursorTo(
-        cursorIx,
-        prevRect.left + Math.min(40, prevRect.width * 0.3),
-        prevRect.top + Math.min(24, prevRect.height * 0.3),
-        'arrow',
-        sectionId,
-      );
-      if (sectionId && skipRef.current.has(sectionId)) {
-        el.dataset.swarmBuilt = '1';
-        return;
-      }
-      sfx().press(prevRect.left, window.innerWidth);
-      await dragDuplicateWithCursor(cursorIx, prevRect, rect, 130, sectionId);
-      sfx().place(
-        'dup',
-        rect.left + rect.width / 2,
-        rect.top,
-        rect.width,
-        rect.height,
-        window.innerWidth,
-        window.innerHeight,
-      );
-      releaseEl(el, null, prevRect);
-    } else {
-      await moveCursorTo(cursorIx, rect.left + 6, rect.top + 6, 'cross', sectionId);
-      if (sectionId && skipRef.current.has(sectionId)) {
-        el.dataset.swarmBuilt = '1';
-        return;
-      }
-      sfx().press(rect.left, window.innerWidth);
-      await dragBoxWithCursor(cursorIx, rect, 125, sectionId);
-      releaseEl(el, kind === 'image' ? 'image' : 'rect', null);
-    }
-    await sleep(30 / speedRef.current, sectionId);
+  const clearAllOverlays = () => {
+    cursorsRef.current.forEach((c) => {
+      c.ov = null;
+      c.wf = null;
+      c.press = 0;
+      c.shape = 'arrow';
+    });
+    guidesStateRef.current = [];
+    rulersAlphaRef.current = 0;
+    if (caretRef.current) caretRef.current.style.display = 'none';
+    if (wfLayerRef.current) wfLayerRef.current.innerHTML = '';
+    if (ovSvgRef.current) ovSvgRef.current.innerHTML = '';
+    if (badgesRef.current) badgesRef.current.innerHTML = '';
+    if (rulersRef.current) rulersRef.current.innerHTML = '';
   };
 
   const itemSelectorFor = (section) => {
@@ -452,10 +668,6 @@ export default function SwarmRebuild() {
     return sel ? Array.from(document.querySelectorAll(sel)) : [];
   };
 
-  // Discover the granular sub-elements inside a section so we can hide
-  // them individually (`data-swarm-shell` / `data-swarm-part`), unlock
-  // the outer `<section>` right away (`data-swarm-building="1"`), and
-  // reveal each piece live on screen as its cursor draws/types it.
   const prepareSectionParts = (section, el) => {
     let shell = null;
     const heading =
@@ -510,10 +722,7 @@ export default function SwarmRebuild() {
       }
     });
 
-    // Unlock the outer <section> container immediately so every child piece
-    // becomes visible on screen the exact moment its cursor finishes!
     el.dataset.swarmBuilding = '1';
-
     return { shell, heading, extras };
   };
 
@@ -522,13 +731,16 @@ export default function SwarmRebuild() {
     delete el.dataset.swarmBuilding;
     el.dataset.swarmBuilt = '1';
     el.style.clipPath = '';
+    el.style.transform = '';
     el.querySelectorAll('[data-swarm-shell], [data-swarm-part], h1, h2').forEach((node) => {
       node.dataset.swarmBuilt = '1';
       node.style.clipPath = '';
+      node.style.transform = '';
     });
     sectionItems(section).forEach((item) => {
       item.dataset.swarmBuilt = '1';
       item.style.clipPath = '';
+      item.style.transform = '';
     });
   };
 
@@ -536,7 +748,7 @@ export default function SwarmRebuild() {
     if (builtRef.current.size >= SECTIONS.length && phaseRef.current === 'building') {
       updatePhase('done');
       setCurrentLabel('সব তৈরি!');
-      hideOverlays();
+      clearAllOverlays();
       sfx().finale();
     }
   };
@@ -666,6 +878,17 @@ export default function SwarmRebuild() {
     }
   };
 
+  // Parallel multiplayer choreography per section:
+  // Wave 1 (~0.25s): Cursor A drags out the outer Win98 window shell
+  //                  (growing #D9D9D9 wireframe -> real window) while
+  //                  Cursor B pulls a red alignment guide from the ruler.
+  // Wave 2 (~1.4s):  All 4 cursors work simultaneously in parallel:
+  //                  - Cursor A types the heading + snaps it to the guide.
+  //                  - Cursor B draws Card 1 (master) + sequentially
+  //                    Alt-drags duplicate Cards 2..N with the `dup` cursor!
+  //                  - Cursors C & D simultaneously draw the section's
+  //                    extra boxes/images (Hero image, quote box, buttons,
+  //                    Contact form, Navbar taskbar).
   const buildSectionOnce = async (section) => {
     const token = tokenRef.current;
     const startedAt = nowMs();
@@ -681,72 +904,93 @@ export default function SwarmRebuild() {
       return;
     }
     setCurrentLabel(`${section.label} বানানো হচ্ছে…`);
-    const lead = SECTIONS.findIndex((s) => s.id === section.id) % COLORS.length;
+    const baseIx = SECTIONS.findIndex((s) => s.id === section.id) % COLORS.length;
+    const c0 = baseIx;
+    const c1 = (baseIx + 1) % COLORS.length;
+    const c2 = (baseIx + 2) % COLORS.length;
+    const c3 = (baseIx + 3) % COLORS.length;
 
-    // Unlock the outer <section> right away and gate its individual inner
-    // pieces so each piece appears on screen the moment a cursor draws it!
     const { shell, heading, extras } = prepareSectionParts(section, el);
     const shellEl = shell || el;
-    const shellRect = shellEl.getBoundingClientRect();
+    const hRect = heading ? heading.getBoundingClientRect() : null;
+    const wantGuide =
+      hRect && hRect.width > 0 && hRect.bottom > 0 && hRect.top < window.innerHeight && section.id !== 'nav';
 
-    // 1. Drag out the outer window shell / header bar and reveal it immediately!
-    await moveCursorTo(lead, shellRect.left + 8, shellRect.top + 8, 'cross', section.id);
+    // Wave 1: Cursor c0 drags the outer window shell while Cursor c1
+    // simultaneously pulls a red guide from the left ruler!
+    let activeGuide = null;
+    await Promise.all([
+      drawBoxAuthentic(c0, shellEl, 'rect', 145, section.id),
+      wantGuide
+        ? pullRulerGuide(c1, 'x', Math.round(hRect.left), section.id).then((g) => {
+            activeGuide = g;
+          })
+        : Promise.resolve(),
+    ]);
     if (aborted()) return;
     if (overBudget()) return finishFast();
-    hoverOthers(lead, shellRect);
-    sfx().press(shellRect.left, window.innerWidth);
-    await dragBoxWithCursor(lead, shellRect, 145, sectionIdOrNull(section));
-    if (aborted()) return;
-    releaseEl(shellEl, 'rect', null);
 
-    // 2. Pen ruler guide + live left-to-right character typing on the heading.
-    if (heading) {
-      const hRect = heading.getBoundingClientRect();
-      if (hRect.width > 0 && hRect.bottom > 0 && hRect.top < window.innerHeight) {
-        await showGuide((lead + 1) % COLORS.length, hRect, section.id);
-        if (aborted()) return;
-        if (overBudget()) return finishFast();
-        await typeAcross(lead, heading, hRect, heading.textContent || '', section.id);
-        if (aborted()) return;
-        if (overBudget()) return finishFast();
-      } else {
-        heading.dataset.swarmBuilt = '1';
+    // Wave 2: All 4 cursors build the inner elements in parallel!
+    const allItems = sectionItems(section).slice(0, MAX_CHOREOGRAPHED_ITEMS);
+
+    // Worker A (c0): Type heading with caret, font-size grow, and guide snap
+    const headingJob = (async () => {
+      if (!heading) return;
+      await typeHeadingAuthentic(c0, heading, activeGuide, section.id);
+      if (activeGuide) {
+        setTimeout(() => {
+          activeGuide.vis = false;
+        }, 450);
       }
-    }
+    })();
 
-    // 3. Draw repeated cards inside (first card drawn with crosshair box,
-    // subsequent cards Alt-dragged as duplicates with spacing guide).
-    const allItems = sectionItems(section);
-    const choreographed = allItems.slice(0, MAX_CHOREOGRAPHED_ITEMS);
-    let prevRect = null;
-    for (let i = 0; i < choreographed.length; i++) {
-      if (aborted()) return;
-      if (overBudget()) return finishFast();
-      const item = choreographed[i];
-      if (item.dataset.swarmBuilt) {
+    // Worker B (c1 & c2): Draw Master Card 1 with wireframe, then Alt-drag
+    // duplicate Cards 2..N with the double-arrow `dup` cursor!
+    const cardsJob = (async () => {
+      if (allItems.length === 0) return;
+      const master = allItems[0];
+      if (!master.dataset.swarmBuilt) {
+        await drawBoxAuthentic(c1, master, 'rect', 135, section.id);
+      }
+      let prevRect = master.getBoundingClientRect();
+      for (let i = 1; i < allItems.length; i++) {
+        if (aborted() || overBudget()) break;
+        const item = allItems[i];
+        if (!item.dataset.swarmBuilt) {
+          const dupCursor = i % 2 === 1 ? c2 : c1;
+          await duplicateCardAuthentic(dupCursor, prevRect, item, section.id);
+        }
         prevRect = item.getBoundingClientRect();
-        continue;
       }
-      const cursorIx = (lead + i + 1) % COLORS.length;
-      await drawItem(cursorIx, item, 'rect', i > 0, prevRect, section.id);
-      prevRect = item.getBoundingClientRect();
-    }
+    })();
 
-    // 4. Draw section-specific inner pieces (Hero image/description/buttons,
-    // Contact form as one box, Navbar taskbar, Victims load-more button).
-    for (let j = 0; j < extras.length; j++) {
-      if (aborted()) return;
-      if (overBudget()) return finishFast();
-      const { el: partEl, kind } = extras[j];
-      if (!partEl || partEl.dataset.swarmBuilt) continue;
-      const cursorIx = (lead + j + 1) % COLORS.length;
-      await drawItem(cursorIx, partEl, kind, false, null, section.id);
-    }
+    // Workers C & D (c2 / c3): Simultaneously draw extras (Hero image with
+    // mountain/sun placeholder icon, description box, action buttons,
+    // Contact form as one box, Navbar taskbar).
+    const extrasEven = extras.filter((_, idx) => idx % 2 === 0);
+    const extrasOdd = extras.filter((_, idx) => idx % 2 === 1);
+
+    const runExtrasWorker = async (workerCursor, list) => {
+      for (const { el: partEl, kind } of list) {
+        if (aborted() || overBudget()) break;
+        if (!partEl || partEl.dataset.swarmBuilt) continue;
+        await drawBoxAuthentic(workerCursor, partEl, kind, 130, section.id);
+      }
+    };
+
+    await Promise.all([
+      headingJob,
+      cardsJob,
+      runExtrasWorker(allItems.length > 0 ? c3 : c2, extrasEven),
+      runExtrasWorker(c3, extrasOdd),
+    ]);
 
     if (aborted()) return;
 
-    // 5. Finalize section and guarantee all child parts are marked built.
+    // Finalize section and guarantee all child parts are marked built.
     releaseAllPartsInEl(section, el);
+    guidesStateRef.current = [];
+    rulersAlphaRef.current = 0;
 
     if (section.id === 'hero') {
       const r = el.getBoundingClientRect();
@@ -756,11 +1000,9 @@ export default function SwarmRebuild() {
     }
     builtRef.current.add(section.id);
     setBuiltCount(builtRef.current.size);
-    await sleep(40 / speedRef.current, section.id);
+    await sleep(35 / speedRef.current, section.id);
     checkAllDone();
   };
-
-  const sectionIdOrNull = (section) => (section ? section.id : null);
 
   const enqueueBuild = (section) => {
     if (builtRef.current.has(section.id) || buildingRef.current.has(section.id)) return queueRef.current;
@@ -792,6 +1034,7 @@ export default function SwarmRebuild() {
       delete el.dataset.swarmBuilding;
       el.dataset.swarmBuilt = '1';
       el.style.clipPath = '';
+      el.style.transform = '';
     });
     document
       .querySelectorAll(
@@ -800,6 +1043,7 @@ export default function SwarmRebuild() {
       .forEach((el) => {
         el.dataset.swarmBuilt = '1';
         el.style.clipPath = '';
+        el.style.transform = '';
       });
     SECTIONS.forEach((s) => builtRef.current.add(s.id));
     setBuiltCount(builtRef.current.size);
@@ -822,7 +1066,7 @@ export default function SwarmRebuild() {
       sectionWatcherRef.current.disconnect();
       sectionWatcherRef.current = null;
     }
-    hideOverlays();
+    clearAllOverlays();
   };
 
   const goLive = () => {
@@ -855,6 +1099,7 @@ export default function SwarmRebuild() {
         delete el.dataset.swarmShell;
         delete el.dataset.swarmPart;
         el.style.clipPath = '';
+        el.style.transform = '';
       });
     builtRef.current = new Set();
     buildingRef.current = new Set();
@@ -884,22 +1129,23 @@ export default function SwarmRebuild() {
     sfx().init();
     sfx().intro();
 
+    // Intro: cursors swoop in from the sides and orbit the top center
     const cx = window.innerWidth / 2;
-    const cy = 110;
+    const cy = 120;
     const orbitStart = perfMs();
     const orbit = () => {
       if (tokenRef.current !== token) return;
       const t = (perfMs() - orbitStart) / 1000;
       cursorsRef.current.forEach((c) => {
-        const a = c.angle + t * 1.6;
-        const r = Math.max(30, 90 - t * 30);
-        c.tx = cx + Math.cos(a) * r;
-        c.ty = cy + Math.sin(a) * r * 0.6;
+        const a = c.orbitAngle + t * 2.2;
+        const r = Math.max(28, 95 - t * 35);
+        c.x += (cx + Math.cos(a) * r - c.x) * 0.25;
+        c.y += (cy + Math.sin(a) * r * 0.6 - c.y) * 0.25;
       });
-      if (perfMs() - orbitStart < 340) requestAnimationFrame(orbit);
+      if (perfMs() - orbitStart < 320) requestAnimationFrame(orbit);
     };
     orbit();
-    await sleep((isReplay ? 240 : 340) / speedRef.current);
+    await sleep((isReplay ? 220 : 320) / speedRef.current);
     if (tokenRef.current !== token) return;
     sfx().start();
 
@@ -1006,23 +1252,194 @@ export default function SwarmRebuild() {
     setTourOn(false);
   };
 
+  // 60fps imperative render loop: updates cursors, growing wireframes,
+  // SVG selection boxes + 7x7 corner handles + dashed ruler lines + red
+  // guides + red spacing lines, and the top/left 20px Figma rulers.
   useEffect(() => {
     if (reducedMotion) return undefined;
+    let lastOvS = '';
+    let lastBadgeS = '';
+    let lastWfS = '';
+    let lastRulerS = '';
+
     const tick = () => {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const sx = window.scrollX;
+      const sy = window.scrollY;
       const mouse = mouseRef.current;
+
+      // 1. Update cursor positions, shapes, hotspot offsets, and press scale
       cursorsRef.current.forEach((c, i) => {
         const el = cursorElsRef.current[i];
         if (!el) return;
+        c.press = Math.max(0, c.press - 0.09);
         if (phaseRef.current === 'done' || phaseRef.current === 'live') {
-          c.tx = mouse.x + (i - 1.5) * 26;
-          c.ty = mouse.y + (i % 2 === 0 ? -14 : 16);
+          const t = perfMs() / 1000;
+          const ox = Math.cos(t * 1.4 + i * 1.57) * 32;
+          const oy = Math.sin(t * 1.8 + i * 1.57) * 24;
+          c.x += (mouse.x + ox - c.x) * 0.16;
+          c.y += (mouse.y + oy - c.y) * 0.16;
         }
-        c.x += (c.tx - c.x) * 0.22;
-        c.y += (c.ty - c.y) * 0.22;
-        el.style.transform = `translate(${c.x}px, ${c.y}px)`;
+        el.style.transform = `translate(${f1(c.x)}px, ${f1(c.y)}px)`;
+        const svg = el.firstChild;
+        if (svg) {
+          if (c.renderedShape !== c.shape) {
+            svg.innerHTML = renderCursorInnerSvg(c.shape, c.color);
+            c.renderedShape = c.shape;
+          }
+          const [hx, hy] = HOTSPOTS[c.shape] || HOTSPOTS.arrow;
+          const sc = f1(1 - c.press * 0.14);
+          svg.style.transformOrigin = `${hx}px ${hy}px`;
+          svg.style.transform = `translate(${-hx}px, ${-hy}px) scale(${sc})`;
+        }
       });
+
+      // 2. Render growing #D9D9D9 wireframe placeholder boxes
+      if (wfLayerRef.current) {
+        let wfHtml = '';
+        for (const c of cursorsRef.current) {
+          if (!c.wf) continue;
+          const { x, y, w, h, isImg } = c.wf;
+          wfHtml += `<div class="swarm-wf-box" style="transform:translate(${f1(x)}px,${f1(y)}px);width:${f1(w)}px;height:${f1(h)}px">${isImg ? IMG_PH_SVG : ''}</div>`;
+        }
+        if (wfHtml !== lastWfS) {
+          wfLayerRef.current.innerHTML = wfHtml;
+          lastWfS = wfHtml;
+        }
+      }
+
+      // 3. Render SVG selection rects, 7x7 corner handles, ruler lines,
+      // red alignment guides, and red duplicate spacing measurements
+      let svgS = '';
+      let badgeS = '';
+      const activeBoxesForRuler = [];
+
+      for (const g of guidesStateRef.current) {
+        if (!g.vis || g.op <= 0) continue;
+        if (g.flash > 0) g.flash = Math.max(0, g.flash - 0.04);
+        const sw = f1(1 + g.flash * 1.2);
+        const flt = g.flash > 0 ? ` style="filter:drop-shadow(0 0 ${f1(2 + g.flash * 3)}px ${RED})"` : '';
+        if (g.axis === 'x') {
+          svgS += `<line x1="${f1(g.cur)}" x2="${f1(g.cur)}" y1="0" y2="${H}" stroke="${RED}" stroke-width="${sw}"${flt}/>`;
+        } else {
+          svgS += `<line x1="0" x2="${W}" y1="${f1(g.cur)}" y2="${f1(g.cur)}" stroke="${RED}" stroke-width="${sw}"${flt}/>`;
+        }
+      }
+
+      for (const c of cursorsRef.current) {
+        if (!c.ov) continue;
+        const list = c.ov();
+        for (const v of list) {
+          if (v.t === 'box') {
+            const x = f1(v.b.x);
+            const y = f1(v.b.y);
+            const w = f1(v.b.w);
+            const h = f1(v.b.h);
+            const col = v.color === 'red' ? RED : BLUE;
+            svgS += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="${col}" stroke-width="1"/>`;
+            if (v.underline && v.underline.w > 0) {
+              const u = v.underline;
+              svgS += `<line x1="${f1(u.x)}" x2="${f1(u.x + u.w)}" y1="${f1(u.y)}" y2="${f1(u.y)}" stroke="${BLUE}" stroke-width="1.5"/>`;
+            }
+            if (v.rulerLines && rulersAlphaRef.current > 0.05) {
+              svgS +=
+                `<g stroke="${BLUE}" stroke-width="1" stroke-dasharray="2 2" opacity="0.75">` +
+                `<line x1="${RULER_SIZE}" x2="${x}" y1="${f1(y + h / 2)}" y2="${f1(y + h / 2)}"/>` +
+                `<line x1="${f1(x + w / 2)}" x2="${f1(x + w / 2)}" y1="${RULER_SIZE}" y2="${y}"/>` +
+                `</g>`;
+            }
+            if (v.handles) {
+              activeBoxesForRuler.push({ x, y, w, h });
+              for (const [hx, hy] of [
+                [x, y],
+                [x + w, y],
+                [x, y + h],
+                [x + w, y + h],
+              ]) {
+                svgS += `<rect x="${f1(hx - 3.5)}" y="${f1(hy - 3.5)}" width="7" height="7" fill="#fff" stroke="${col}" stroke-width="1"/>`;
+              }
+            }
+            if (v.badge && w > 0) {
+              const bx = clamp(x + w / 2, 36, W - 36);
+              const by = clamp(y + h + 6, 6, H - 28);
+              badgeS += `<div class="swarm-badge" style="left:${f1(bx)}px;top:${f1(by)}px;background:${col}">${v.badge}</div>`;
+            }
+          } else if (v.t === 'measure') {
+            const ax = f1(v.a.x);
+            const ay = f1(v.a.y);
+            const zx = f1(v.b.x);
+            const zy = f1(v.b.y);
+            svgS += `<line x1="${ax}" y1="${ay}" x2="${zx}" y2="${zy}" stroke="${RED}" stroke-width="1.2"/>`;
+            const horiz = Math.abs(ay - zy) < 2;
+            const lx = horiz ? (ax + zx) / 2 : ax + 18;
+            const ly = horiz ? ay + 6 : (ay + zy) / 2 - 8;
+            badgeS += `<div class="swarm-badge" style="left:${f1(lx)}px;top:${f1(ly)}px;background:${RED}">${v.label}</div>`;
+          }
+        }
+      }
+
+      if (ovSvgRef.current && svgS !== lastOvS) {
+        ovSvgRef.current.innerHTML = svgS;
+        lastOvS = svgS;
+      }
+      if (badgesRef.current && badgeS !== lastBadgeS) {
+        badgesRef.current.innerHTML = badgeS;
+        lastBadgeS = badgeS;
+      }
+
+      // 4. Render top & left 20px Figma rulers when active
+      if (rulersRef.current) {
+        if (rulersAlphaRef.current <= 0.01 || phaseRef.current !== 'building') {
+          if (lastRulerS !== '') {
+            rulersRef.current.innerHTML = '';
+            lastRulerS = '';
+          }
+        } else {
+          const step = 100;
+          let topTicks = '';
+          let leftTicks = '';
+          const xStart = Math.floor(sx / step) * step;
+          for (let worldX = xStart; worldX - sx < W; worldX += step / 2) {
+            const rx = f1(worldX - sx);
+            const major = worldX % step === 0;
+            topTicks += `<line x1="${rx}" x2="${rx}" y1="${major ? 12 : 15}" y2="${RULER_SIZE}" stroke="#5E5E5E"/>`;
+            if (major && rx > 24) {
+              topTicks += `<text x="${f1(rx + 3)}" y="10" class="swarm-rtext">${worldX}</text>`;
+            }
+          }
+          const yStart = Math.floor(sy / step) * step;
+          for (let worldY = yStart; worldY - sy < H; worldY += step / 2) {
+            const ry = f1(worldY - sy);
+            const major = worldY % step === 0;
+            leftTicks += `<line y1="${ry}" y2="${ry}" x1="${major ? 12 : 15}" x2="${RULER_SIZE}" stroke="#5E5E5E"/>`;
+            if (major && ry > 28) {
+              leftTicks += `<text x="11" y="${f1(ry - 3)}" class="swarm-rtext" transform="rotate(-90 11 ${f1(ry - 3)})">${worldY}</text>`;
+            }
+          }
+          for (const b of activeBoxesForRuler) {
+            topTicks =
+              `<rect x="${b.x}" y="0" width="${b.w}" height="${RULER_SIZE}" fill="rgba(13,153,255,0.24)"/>` +
+              topTicks +
+              `<text x="${f1(b.x + 3)}" y="10" class="swarm-rtext swarm-rsel">${Math.round(b.x + sx)}</text>`;
+            leftTicks =
+              `<rect x="0" y="${b.y}" width="${RULER_SIZE}" height="${b.h}" fill="rgba(13,153,255,0.24)"/>` +
+              leftTicks;
+          }
+          const rulerHtml =
+            `<div class="swarm-ruler swarm-ruler-top"><svg width="${W}" height="${RULER_SIZE}">${topTicks}</svg></div>` +
+            `<div class="swarm-ruler swarm-ruler-left"><svg width="${RULER_SIZE}" height="${H}">${leftTicks}</svg></div>` +
+            `<div class="swarm-ruler-corner"></div>`;
+          if (rulerHtml !== lastRulerS) {
+            rulersRef.current.innerHTML = rulerHtml;
+            lastRulerS = rulerHtml;
+          }
+        }
+      }
+
       rafRef.current = requestAnimationFrame(tick);
     };
+
     rafRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafRef.current);
   }, [reducedMotion]);
@@ -1180,6 +1597,11 @@ export default function SwarmRebuild() {
   return (
     <>
       <div className="swarm-overlay" aria-hidden="true">
+        <div ref={wfLayerRef} className="swarm-wf-layer" />
+        <svg ref={ovSvgRef} className="swarm-ov-svg" />
+        <div ref={badgesRef} className="swarm-badges" />
+        <div ref={caretRef} className="swarm-caret" />
+        <div ref={rulersRef} className="swarm-rulers" />
         {COLORS.map((color, i) => (
           <div
             key={color}
@@ -1187,16 +1609,11 @@ export default function SwarmRebuild() {
               cursorElsRef.current[i] = el;
             }}
             className="swarm-cursor"
-            dangerouslySetInnerHTML={{ __html: arrowSvg(color) }}
+            dangerouslySetInnerHTML={{
+              __html: `<svg width="28" height="28" viewBox="0 0 28 28">${renderCursorInnerSvg('arrow', color)}</svg>`,
+            }}
           />
         ))}
-        <div ref={boxRef} className="swarm-draw-box">
-          <span ref={badgeRef} className="swarm-size-badge" />
-        </div>
-        <div ref={dupBoxRef} className="swarm-dup-box" />
-        <div ref={guideRef} className="swarm-guide" />
-        <div ref={caretRef} className="swarm-caret" />
-        <div ref={spacingRef} className="swarm-spacing" />
       </div>
 
       <div className="swarm-toolbar" role="toolbar" aria-label="Swarm Rebuild নিয়ন্ত্রণ">
