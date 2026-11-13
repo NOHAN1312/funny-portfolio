@@ -61,6 +61,29 @@ const WATCHDOG_MS = 10000;
 // Beat after the hero finishes before the auto-tour starts moving.
 const AUTO_TOUR_DELAY_MS = 2500;
 
+// PR #4 (2026-11-12) — why the scroll stall happened even WITH PR #3's
+// watchdog, and why the hero looked late / the tour looked early:
+// (a) The watchdog only watched sections already in `building`
+// (buildStartRef). A section QUEUED behind another one has no entry
+// there, and the idle-rescue only looked for sections already IN VIEW
+// — so a visitor who stopped scrolling in a blank gap between
+// sections (the site has very large gaps) left the queue idle, the
+// label frozen at "X বানানো হচ্ছে… (n/7)", and nothing ever resumed:
+// the tour is the only auto-advance, and any wheel scroll kills it
+// for good. There was no scroll-end resume at all.
+// (b) The auto-tour gated on builtRef.has('hero'), but builtRef is set
+// by instant-release paths too (releaseEarlierSections, !el paths), so
+// the tour could start before the visitor had SEEN the hero built —
+// then smooth-scroll the viewport away to Contact in ~3-4s, so the
+// hero was never seen being built at all. The 2.5s beat must run from
+// the hero being VISIBLE, not merely marked built.
+// (c) The tour waited only for builtRef per section, so sections
+// instant-released during the smooth-scroll sweep were passed in ~0ms
+// — the whole page "finished" in 4-7s as a blur. The tour now lingers
+// a minimum dwell per section.
+const MIN_TOUR_DWELL_MS = 1200; // min time the tour lingers per section
+const SCROLL_RESUME_MS = 900; // idle time after a scroll before auto-resume
+
 const SECTIONS = [
   { id: 'nav', label: 'ন্যাভবার' },
   { id: 'hero', label: 'হিরো' },
@@ -121,6 +144,9 @@ export default function SwarmRebuild() {
   const phaseRef = useRef('building');
   const mouseRef = useRef({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
   const userScrolledRef = useRef(false);
+  const queuedAtRef = useRef(new Map()); // section id -> Date.now() when enqueued
+  const heroVisibleAtRef = useRef(null); // set when the hero is actually seen
+  const scrollEndTimerRef = useRef(null);
 
   const cursorElsRef = useRef([]);
   const cursorsRef = useRef(
@@ -322,11 +348,19 @@ export default function SwarmRebuild() {
         item.dataset.swarmBuilt = '1';
       });
       el.dataset.swarmBuilt = '1';
+      // PR #4: the hero counts as "seen" only if it is actually in
+      // view right now — an off-screen instant release must not start
+      // the auto-tour clock.
+      if (section.id === 'hero') {
+        const r = el.getBoundingClientRect();
+        if (r.bottom > 0 && r.top < window.innerHeight) heroVisibleAtRef.current = Date.now();
+      }
     }
     skipRef.current.add(section.id);
     builtRef.current.add(section.id);
     buildingRef.current.delete(section.id);
     buildStartRef.current.delete(section.id);
+    queuedAtRef.current.delete(section.id);
     setBuiltCount(builtRef.current.size);
     if (builtRef.current.size >= SECTIONS.length && phaseRef.current === 'building') {
       setPhase('done');
@@ -354,6 +388,7 @@ export default function SwarmRebuild() {
   // while the queue's .catch(()=>{}) swallowed the error silently.
   const buildSection = async (section) => {
     buildStartRef.current.set(section.id, Date.now());
+    queuedAtRef.current.delete(section.id);
     try {
       await buildSectionOnce(section);
     } finally {
@@ -398,7 +433,9 @@ export default function SwarmRebuild() {
     const heading = el.querySelector('h1, h2');
     if (heading) {
       const hRect = heading.getBoundingClientRect();
-      if (hRect.width > 0) {
+      // PR #4: if the viewport moved mid-build (tour scroll), the
+      // heading may be off-screen — don't chase cursors off-screen.
+      if (hRect.width > 0 && hRect.bottom > 0 && hRect.top < window.innerHeight) {
         await showGuide(hRect);
         if (aborted()) return;
         if (overBudget()) return finishFast();
@@ -448,6 +485,13 @@ export default function SwarmRebuild() {
     // 4. Release the real section. (buildSection's finally removes the
     // `building` entry, so this path never has to.)
     releaseEl(el, 'rect');
+    // PR #4: the hero is "seen" only once its own choreographed build
+    // finished while it is in view — this is what the auto-tour waits
+    // for, not the bare built flag (instant release also sets that).
+    if (section.id === 'hero') {
+      const r = el.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < window.innerHeight) heroVisibleAtRef.current = Date.now();
+    }
     builtRef.current.add(section.id);
     setBuiltCount(builtRef.current.size);
     await sleep(60 / speedRef.current);
@@ -462,6 +506,7 @@ export default function SwarmRebuild() {
   const enqueueBuild = (section) => {
     if (builtRef.current.has(section.id) || buildingRef.current.has(section.id)) return queueRef.current;
     buildingRef.current.add(section.id);
+    queuedAtRef.current.set(section.id, Date.now());
     pendingRef.current += 1;
     queueRef.current = queueRef.current
       .then(() => buildSection(section))
@@ -615,20 +660,29 @@ export default function SwarmRebuild() {
     // touch scroll stops it. Before PR #3 this existed only on mobile
     // (<720px), so on desktop a visitor who never scrolled sat at 2/7
     // forever — the main reason live builds looked minutes long.
-    // (The 2.5s beat lets the visitor actually see the finished hero.)
+    // PR #4: the tour starts only after the hero has actually been
+    // SEEN — heroVisibleAtRef is set when the hero is built AND in
+    // view — plus the 2.5s beat, and only if the visitor is still at
+    // the top when the beat expires. Gating on builtRef alone let the
+    // tour fire ~1-2s after load (instant release counts as "built")
+    // and yank the viewport to Contact before the visitor ever saw
+    // the hero.
     const waitHero = setInterval(() => {
       if (tokenRef.current !== token || phaseRef.current !== 'building') {
         clearInterval(waitHero);
         return;
       }
-      if (builtRef.current.has('hero') && !userScrolledRef.current && window.scrollY < 100) {
+      const seenAt = heroVisibleAtRef.current;
+      if (
+        seenAt !== null &&
+        Date.now() - seenAt >= AUTO_TOUR_DELAY_MS &&
+        !userScrolledRef.current &&
+        window.scrollY < 100
+      ) {
         clearInterval(waitHero);
-        setTimeout(() => {
-          if (tokenRef.current !== token || phaseRef.current !== 'building' || userScrolledRef.current) return;
-          setTourOn(true);
-          tourRef.current = true;
-          void runTour();
-        }, AUTO_TOUR_DELAY_MS);
+        setTourOn(true);
+        tourRef.current = true;
+        void runTour();
       }
     }, 500);
     setTimeout(() => clearInterval(waitHero), 60000);
@@ -645,14 +699,18 @@ export default function SwarmRebuild() {
         continue;
       }
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      const started = Date.now();
-      while (
-        !builtRef.current.has(next.id) &&
-        Date.now() - started < 4500 &&
-        tourRef.current &&
-        tokenRef.current === token
-      ) {
-        await sleep(200);
+      // PR #4: linger per section — wait for the build AND a minimum
+      // dwell, so the visitor actually sees each section built instead
+      // of the tour blurring past instant-released sections in ~0ms
+      // (the whole page "finished" in 4-7s on the live check).
+      const arrived = Date.now();
+      const minDwell = MIN_TOUR_DWELL_MS / speedRef.current;
+      while (tourRef.current && tokenRef.current === token) {
+        const done = builtRef.current.has(next.id);
+        const elapsed = Date.now() - arrived;
+        if (done && elapsed >= minDwell) break;
+        if (!done && elapsed >= 4500) break;
+        await sleep(150);
       }
       await sleep(150 / speedRef.current);
     }
@@ -697,7 +755,41 @@ export default function SwarmRebuild() {
       setTimeout(() => setSoundBlocked(!sfx().ready()), 300);
     };
     const onScroll = () => {
+      // NOTE: programmatic smooth scrolls (the tour itself) also fire
+      // this — only real user input marks "the visitor scrolled", so
+      // the tour's own scrolling never blocks a later auto-tour.
+    };
+    // PR #4: scroll-end auto-resume. The tour is the only auto-advance
+    // and any wheel scroll kills it — so a visitor who stopped in a
+    // blank gap between sections used to sit at a frozen "n/7" label
+    // forever: the observer only fires on intersection, and the
+    // watchdog only rescued in-view sections. After ~900ms with no
+    // scroll input, resume by building the nearest unbuilt section
+    // (scrolling to it if it is below the viewport).
+    const resumeAfterScroll = () => {
+      if (phaseRef.current !== 'building') return;
+      if (pendingRef.current > 0 || buildingRef.current.size > 0) return;
+      const next = SECTIONS.find((s) => !builtRef.current.has(s.id));
+      if (!next) return;
+      const el = next.id === 'nav' ? document.querySelector('nav') : document.getElementById(next.id);
+      if (!el) {
+        releaseSectionNow(next);
+        return;
+      }
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      enqueueBuild(next);
+    };
+    const scheduleResume = () => {
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
+      scrollEndTimerRef.current = setTimeout(resumeAfterScroll, SCROLL_RESUME_MS);
+    };
+    const onUserScrollInput = () => {
       if (window.scrollY > 120) userScrolledRef.current = true;
+      if (tourRef.current) {
+        tourRef.current = false;
+        setTourOn(false);
+      }
+      scheduleResume();
     };
     const onKey = (e) => {
       if (e.key === 'Escape') {
@@ -710,20 +802,18 @@ export default function SwarmRebuild() {
           return next;
         });
       }
+      if (['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' '].includes(e.key)) {
+        onUserScrollInput();
+      }
       onUnlock();
     };
-    const onWheel = () => {
-      userScrolledRef.current = true;
-      if (tourRef.current) {
-        tourRef.current = false;
-        setTourOn(false);
-      }
-    };
+    const onWheel = onUserScrollInput;
     window.addEventListener('pointermove', onPointerMove, { passive: true });
     window.addEventListener('pointerdown', onUnlock, true);
     window.addEventListener('keydown', onKey, true);
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('wheel', onWheel, { passive: true });
+    window.addEventListener('touchmove', onUserScrollInput, { passive: true });
     // Victims 4-11 only render after "load more" is clicked: if the
     // victims section is already built, new cards must show at once
     // instead of arriving ghost-hidden.
@@ -753,6 +843,17 @@ export default function SwarmRebuild() {
           if (sec) releaseSectionNow(sec);
         }
       });
+      // PR #4: the watchdog only saw STARTED builds. A section queued
+      // behind another one has no buildStartRef entry, so a queue that
+      // never advances also never trips the watchdog — force-release
+      // anything queued longer than WATCHDOG_MS too.
+      queuedAtRef.current.forEach((queuedAt, id) => {
+        if (now - queuedAt > WATCHDOG_MS && !builtRef.current.has(id)) {
+          const sec = SECTIONS.find((s) => s.id === id);
+          console.warn('[swarm] watchdog: section stuck in queue, force-releasing:', id);
+          if (sec) releaseSectionNow(sec);
+        }
+      });
       // Queue idle but an unbuilt section is already on screen (e.g.
       // its observer never fired): start it instead of waiting forever.
       if (pendingRef.current === 0 && buildingRef.current.size === 0) {
@@ -771,6 +872,7 @@ export default function SwarmRebuild() {
       tokenRef.current = -1;
       cancelAnimationFrame(rafRef.current);
       clearInterval(watchdog);
+      if (scrollEndTimerRef.current) clearTimeout(scrollEndTimerRef.current);
       if (sectionWatcherRef.current) sectionWatcherRef.current.disconnect();
       if (observerRef.current) observerRef.current.disconnect();
       if (victimsObserver) victimsObserver.disconnect();
@@ -779,6 +881,7 @@ export default function SwarmRebuild() {
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('wheel', onWheel);
+      window.removeEventListener('touchmove', onUserScrollInput);
       // Never leave the site hidden if this component unmounts.
       document.documentElement.classList.remove('swarm-active');
       document.querySelectorAll('[data-swarm-built]').forEach((el) => {
