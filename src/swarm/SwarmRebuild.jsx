@@ -35,9 +35,8 @@ const RULER_SIZE = 20;
 
 const SECTION_BUDGET_MS = 4000;
 const WATCHDOG_MS = 10000;
-const AUTO_TOUR_DELAY_MS = 2500;
 const MIN_TOUR_DWELL_MS = 1200;
-const SCROLL_RESUME_MS = 900;
+const SCROLL_RESUME_MS = 180;
 const MAX_CHOREOGRAPHED_ITEMS = 4;
 
 const SECTIONS = [
@@ -790,35 +789,34 @@ export default function SwarmRebuild() {
     }
   };
 
-  const findNearestUnbuiltSection = () => {
-    const unbuilt = SECTIONS.filter((s) => !builtRef.current.has(s.id));
-    if (unbuilt.length === 0) return null;
-    const vh = window.innerHeight;
-    for (const s of unbuilt) {
-      const el = getSectionEl(s.id);
-      if (!el) continue;
-      const r = el.getBoundingClientRect();
-      if (r.bottom > 0 && r.top < vh) return s;
-    }
-    let best = unbuilt[0];
-    let bestDist = Infinity;
-    for (const s of unbuilt) {
-      const el = getSectionEl(s.id);
-      if (!el) return s;
-      const r = el.getBoundingClientRect();
-      const dist = r.top >= 0 ? r.top : Math.abs(r.bottom) + vh * 0.5;
-      if (dist < bestDist) {
-        bestDist = dist;
-        best = s;
-      }
-    }
-    return best;
-  };
-
   const smoothScrollToEl = (el) => {
     if (!el) return;
     programmaticScrollUntilRef.current = nowMs() + 1100;
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Enqueue ONLY the sections that are currently visible on the user's screen.
+  // Never auto-scrolls the page — the page only scrolls automatically when
+  // the user explicitly turns on the Tour button (`ট্যুর`).
+  const enqueueVisibleSections = () => {
+    if (phaseRef.current !== 'building') return false;
+    const vh = window.innerHeight;
+    let enqueuedAny = false;
+    for (const s of SECTIONS) {
+      if (builtRef.current.has(s.id) || buildingRef.current.has(s.id)) continue;
+      const el = getSectionEl(s.id);
+      if (!el) {
+        releaseSectionNow(s, false);
+        continue;
+      }
+      const r = el.getBoundingClientRect();
+      if (r.bottom > 24 && r.top < vh - 24) {
+        releaseEarlierSections(s);
+        enqueueBuild(s);
+        enqueuedAny = true;
+      }
+    }
+    return enqueuedAny;
   };
 
   const scheduleResume = (delayMs) => {
@@ -827,25 +825,8 @@ export default function SwarmRebuild() {
     scrollEndTimerRef.current = setTimeout(() => {
       scrollEndTimerRef.current = null;
       if (phaseRef.current !== 'building' || tourRef.current) return;
-      if (pendingRef.current > 0 || buildingRef.current.size > 0) {
-        scheduleResume(250);
-        return;
-      }
-      const next = findNearestUnbuiltSection();
-      if (!next) return;
-      const el = getSectionEl(next.id);
-      if (!el) {
-        releaseSectionNow(next, false);
-        scheduleResume(150);
-        return;
-      }
-      const r = el.getBoundingClientRect();
-      if (r.bottom <= 40 || r.top >= window.innerHeight - 40) {
-        smoothScrollToEl(el);
-      }
-      releaseEarlierSections(next);
-      enqueueBuild(next);
-    }, Math.max(120, wait));
+      enqueueVisibleSections();
+    }, Math.max(60, wait));
   };
 
   const buildSection = async (section) => {
@@ -869,11 +850,13 @@ export default function SwarmRebuild() {
         phaseRef.current === 'building' &&
         pendingRef.current === 0 &&
         buildingRef.current.size === 0 &&
-        !tourRef.current &&
-        builtRef.current.size < SECTIONS.length &&
-        (userScrolledRef.current || heroVisibleAtRef.current !== null)
+        !tourRef.current
       ) {
-        scheduleResume(450 / speedRef.current);
+        const startedMore = enqueueVisibleSections();
+        if (!startedMore && builtRef.current.size < SECTIONS.length) {
+          clearAllOverlays();
+          setCurrentLabel('স্ক্রল করলে বাকি অংশ তৈরি হবে');
+        }
       }
     }
   };
@@ -1149,8 +1132,12 @@ export default function SwarmRebuild() {
     if (tokenRef.current !== token) return;
     sfx().start();
 
-    enqueueBuild(SECTIONS[0]);
-    enqueueBuild(SECTIONS[1]);
+    // Build ONLY what is currently visible on the user's screen right now.
+    if (window.scrollY < 100) {
+      enqueueBuild(SECTIONS[0]);
+      enqueueBuild(SECTIONS[1]);
+    }
+    enqueueVisibleSections();
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -1184,12 +1171,10 @@ export default function SwarmRebuild() {
           }
           if (sec.id !== 'nav' && sec.id !== 'hero') {
             observer.observe(el);
-            if (builtRef.current.has('hero') || window.scrollY > 80) {
-              const r = el.getBoundingClientRect();
-              if (r.bottom > 0 && r.top < window.innerHeight * 0.9) {
-                releaseEarlierSections(sec);
-                enqueueBuild(sec);
-              }
+            const r = el.getBoundingClientRect();
+            if (r.bottom > 24 && r.top < window.innerHeight - 24) {
+              releaseEarlierSections(sec);
+              enqueueBuild(sec);
             }
           }
         });
@@ -1197,28 +1182,6 @@ export default function SwarmRebuild() {
       watcher.observe(document.body, { childList: true, subtree: true });
       sectionWatcherRef.current = watcher;
     }
-
-    const waitHero = setInterval(() => {
-      if (tokenRef.current !== token || phaseRef.current !== 'building') {
-        clearInterval(waitHero);
-        return;
-      }
-      const seenAt = heroVisibleAtRef.current;
-      const requiredDelay = AUTO_TOUR_DELAY_MS / speedRef.current;
-      if (
-        seenAt !== null &&
-        nowMs() - seenAt >= requiredDelay &&
-        !userScrolledRef.current &&
-        window.scrollY < 100
-      ) {
-        clearInterval(waitHero);
-        waitHeroTimerRef.current = null;
-        setTourOn(true);
-        tourRef.current = true;
-        void runTour();
-      }
-    }, 200);
-    waitHeroTimerRef.current = waitHero;
   };
 
   const runTour = async () => {
@@ -1270,11 +1233,16 @@ export default function SwarmRebuild() {
       const mouse = mouseRef.current;
 
       // 1. Update cursor positions, shapes, hotspot offsets, and press scale
+      const isIdleWaiting =
+        phaseRef.current === 'done' ||
+        phaseRef.current === 'live' ||
+        (buildingRef.current.size === 0 && pendingRef.current === 0);
       cursorsRef.current.forEach((c, i) => {
         const el = cursorElsRef.current[i];
         if (!el) return;
         c.press = Math.max(0, c.press - 0.09);
-        if (phaseRef.current === 'done' || phaseRef.current === 'live') {
+        if (isIdleWaiting) {
+          c.shape = 'arrow';
           const t = perfMs() / 1000;
           const ox = Math.cos(t * 1.4 + i * 1.57) * 32;
           const oy = Math.sin(t * 1.8 + i * 1.57) * 24;
