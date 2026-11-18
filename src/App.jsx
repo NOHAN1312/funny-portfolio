@@ -6,7 +6,6 @@ import ParticleText from './ParticleText';
 import AuthModal from './AuthModal';
 import DotNavigation from './DotNavigation';
 import SpiderClock from './SpiderClock';
-import SwarmRebuild from './swarm/SwarmRebuild';
 
 function App() {
   const [showAllVictims, setShowAllVictims] = useState(false);
@@ -462,7 +461,6 @@ function App() {
 
   return (
     <div className="min-h-screen text-[#1C1917] font-sans selection:bg-[#000080] selection:text-white overflow-x-hidden relative pb-16">
-      <SwarmRebuild />
       <Dragon opacity={dragonOpacity} size={dragonSize} />
       
       {/* Toast Notification for Win98 Actions */}
