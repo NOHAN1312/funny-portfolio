@@ -36,6 +36,10 @@
 
   // ---------------------------------------------------------------- website config
   const SCRIPT_EL = document.currentScript;
+  const IS_MOBILE =
+    typeof window !== "undefined" &&
+    (window.innerWidth < 700 || (typeof window.matchMedia === "function" && window.matchMedia("(pointer: coarse)").matches));
+
   const CONFIG = (() => {
     const ds = (SCRIPT_EL && SCRIPT_EL.dataset) || {};
     const js = window.SwarmRebuildConfig || {};
@@ -46,7 +50,7 @@
       autostart: bool(pick("autostart", true)),
       once: !!pick("once", false) && bool(pick("once", false)),
       delay: num(pick("delay", 0), 0),
-      speed: Math.max(1, Math.min(3, Math.round(num(pick("speed", 1), 1)))),
+      speed: Math.max(1, Math.min(3, Math.round(num(pick("speed", IS_MOBILE ? 2 : 1), IS_MOBILE ? 2 : 1)))),
       tour: !!pick("tour", false) && bool(pick("tour", false)),
       sound: bool(pick("sound", true)),
       controls: String(pick("controls", "show")),
@@ -72,11 +76,11 @@
   const BLUE = "#0D99FF";
   const RED = "#F24822";
   const RULER = 20;
-  const MIN_AGENTS = 8;
-  const MAX_AGENTS = 48;
-  const FLOCK_AGENTS = 36;
-  const INTRO_AGENTS = 18;
-  const MAX_ITEMS = 4000;
+  const MIN_AGENTS = IS_MOBILE ? 6 : 8;
+  const MAX_AGENTS = IS_MOBILE ? 14 : 48;
+  const FLOCK_AGENTS = IS_MOBILE ? 12 : 36;
+  const INTRO_AGENTS = IS_MOBILE ? 8 : 18;
+  const MAX_ITEMS = IS_MOBILE ? 1200 : 4000;
   const MAX_WORLD_H = 40000;
   const SVGNS = "http://www.w3.org/2000/svg";
 

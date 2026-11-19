@@ -42,9 +42,8 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <!-- Swarm Rebuild, step 2: the engine (public/swarm-website.js). Options: see the file header.
-         data-mobile="false" -> skip the whole rebuild on phones/tablets: it snapshots the entire
-         DOM and re-draws it on a canvas with 8-48 cursors plus Web Audio, which is far too heavy
-         for a phone GPU. data-sound="false" keeps the AudioContext from ever starting. -->
-    <script src="./swarm-website.js" data-delay="300" data-mobile="false" data-sound="false"></script>
+         Runs on both desktop (1x speed, up to 48 agents) and mobile (auto-scaled to 2x speed,
+         6-14 agents for smooth phone GPU performance). -->
+    <script src="./swarm-website.js" data-delay="300" data-mobile="true"></script>
   </body>
 </html>
