@@ -45,8 +45,10 @@
   cursor: grabbing;
 }
 
-.spider-clock-container .gsapWrapper:hover {
-  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+@media (hover: hover) {
+  .spider-clock-container .gsapWrapper:hover {
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.4));
+  }
 }
 
 .spider-clock-container #wBody {
@@ -128,4 +130,11 @@
 .spider-clock-close-btn:hover {
   background: #800000;
   color: #FFF;
+}
+
+@media (pointer: coarse) {
+  .spider-clock-container .gsapWrapper {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
 }

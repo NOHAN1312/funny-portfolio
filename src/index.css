@@ -27,8 +27,10 @@
   --color-accent-amber: #F59E0B;
 }
 
-html {
-  scroll-behavior: smooth;
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
 }
 
 body {
@@ -289,8 +291,7 @@ body ::selection {
 /* Scroll Reveal */
 .reveal {
   opacity: 0;
-  transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
-  will-change: opacity, transform;
+  transition: opacity 0.6s cubic-bezier(0.25, 1, 0.5, 1), transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
 }
 
 .reveal.active {
@@ -300,3 +301,16 @@ body ::selection {
 
 .reveal-up { transform: translateY(40px); }
 .reveal-scale { transform: scale(0.92); }
+
+/* Offscreen content containment for heavy below-the-fold sections */
+.cv-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 800px;
+}
+
+@media (pointer: coarse) {
+  .no-backdrop-blur {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}

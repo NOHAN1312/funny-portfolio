@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isLowPower, observeVisibility } from './perf';
 import './flower.css';
 
 export default function Flower() {
@@ -8,25 +9,27 @@ export default function Flower() {
     const section = sectionRef.current;
     if (!section) return;
 
-    // Trigger animation when section scrolls into view
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setTimeout(() => {
-            section.classList.remove('not-loaded');
-          }, 300);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 }
-    );
+    // Trigger the grow-in animation the first time the section scrolls into
+    // view, then keep the ~40 looping CSS animations paused whenever it leaves
+    // the viewport. Without this the compositor never idles on a phone.
+    let revealed = false;
 
-    observer.observe(section);
-    return () => observer.disconnect();
+    const stopObserving = observeVisibility(section, (inView) => {
+      section.classList.toggle('is-paused', !inView);
+
+      if (inView && !revealed) {
+        revealed = true;
+        setTimeout(() => {
+          section.classList.remove('not-loaded');
+        }, 300);
+      }
+    }, { threshold: 0.15 });
+
+    return () => stopObserving();
   }, []);
 
   return (
-    <div ref={sectionRef} className="flower-section not-loaded">
+    <div ref={sectionRef} className={`flower-section not-loaded${isLowPower ? ' is-low-power' : ''}`}>
       <div className="flowers">
         {/* Flower 1 */}
         <div className="flower flower--1">

@@ -9,4 +9,11 @@ export default defineConfig({
     tailwindcss(),
   ],
   base: './',
+  build: {
+    rollupOptions: {
+      // The butterflies effect library is loaded lazily from a CDN at runtime
+      // (see src/Butterflies.jsx), so keep it out of the bundle graph.
+      external: [/^https?:\/\//],
+    },
+  },
 })

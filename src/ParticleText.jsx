@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { gsap } from 'gsap';
+import { isLowPower, maxPixelRatio, observeVisibility } from './perf';
 import './particleText.css';
+
+// 12k points is fine on a desktop GPU but a phone pushes ~4x fewer pixels per
+// frame and has a much weaker GPU, so scale the point count to the device.
+const PARTICLE_COUNT = isLowPower ? 4500 : 12000;
 
 export default function ParticleText() {
   const containerRef = useRef(null);
@@ -27,16 +32,40 @@ export default function ParticleText() {
     const camera = new THREE.PerspectiveCamera(75, currentWidth / currentHeight, 0.1, 1000);
     camera.position.z = 25;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    // Antialiasing is the first thing to drop on mobile: MSAA on a tiled GPU
+    // is a large, permanent per-frame cost for very little visual gain here.
+    const renderer = new THREE.WebGLRenderer({ antialias: !isLowPower, alpha: false, powerPreference: 'high-performance' });
     renderer.setSize(currentWidth, currentHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(maxPixelRatio());
     renderer.setClearColor(0x100c1a, 1); // Solid background matching theme
     canvasContainer.appendChild(renderer.domElement);
 
-    const count = 12000;
+    const count = PARTICLE_COUNT;
     let currentState = 'text'; // 'text' or 'sphere'
     let currentTween = null;
     let resetTimeout = null;
+
+    // Pausing: when the section is scrolled out of view (or the tab is
+    // backgrounded) we stop rendering entirely instead of burning the GPU.
+    let isVisible = true;
+    let isPaused = false;
+
+    function pause() {
+      if (isPaused) return;
+      isPaused = true;
+      cancelAnimationFrame(animationFrameId);
+    }
+
+    function resume() {
+      if (!isPaused) return;
+      isPaused = false;
+      animate();
+    }
+
+    function syncRunState() {
+      if (isVisible && !document.hidden) resume();
+      else pause();
+    }
 
     // Helper for spherical distribution
     function sphericalDistribution(i) {
@@ -159,14 +188,6 @@ export default function ParticleText() {
       if (currentTween) currentTween.kill();
 
       const textPoints = createTextPoints(text);
-      console.log('Dynamic Scaling Debug:', {
-        text,
-        textPointsCount: textPoints.length,
-        currentWidth,
-        currentHeight,
-        minX: textPoints.length ? Math.min(...textPoints.map(p => p.x)) : 0,
-        maxX: textPoints.length ? Math.max(...textPoints.map(p => p.x)) : 0,
-      });
 
       const targetPositions = new Float32Array(count * 3);
       const targetColors = new Float32Array(count * 3);
@@ -294,6 +315,7 @@ export default function ParticleText() {
     // Animation loop
     let animationFrameId;
     function animate() {
+      if (isPaused) return;
       animationFrameId = requestAnimationFrame(animate);
 
       if (currentState === 'sphere') {
@@ -315,6 +337,13 @@ export default function ParticleText() {
       morphToSphere();
     }, 6000);
 
+    // Stop rendering while the section is scrolled away or the tab is hidden.
+    const stopObserving = observeVisibility(container, (inView) => {
+      isVisible = inView;
+      syncRunState();
+    });
+    document.addEventListener('visibilitychange', syncRunState);
+
     // Resize Handler bounded to container element
     const handleResize = () => {
       const w = canvasContainer.clientWidth || window.innerWidth;
@@ -323,6 +352,7 @@ export default function ParticleText() {
       currentHeight = h;
       camera.aspect = currentWidth / currentHeight;
       camera.updateProjectionMatrix();
+      renderer.setPixelRatio(maxPixelRatio());
       renderer.setSize(currentWidth, currentHeight);
     };
 
@@ -334,6 +364,8 @@ export default function ParticleText() {
     // Unmount cleanup logic
     return () => {
       cancelAnimationFrame(animationFrameId);
+      stopObserving();
+      document.removeEventListener('visibilitychange', syncRunState);
       resizeObserver.disconnect();
       if (resetTimeout) clearTimeout(resetTimeout);
       if (currentTween) currentTween.kill();

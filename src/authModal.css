@@ -585,3 +585,10 @@
 .give-up-link:hover {
   color: #D90429;
 }
+
+@media (pointer: coarse) {
+  .auth-modal-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}

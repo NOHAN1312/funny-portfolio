@@ -1,26 +1,65 @@
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { isLowPower } from './perf';
 import './spiderClock.css';
+
+const defaultY = 60;
+const initialPos = { x: 0, y: defaultY };
 
 function SpiderClock({ onClose, showToast }) {
   const containerRef = useRef(null);
-  const watchRef = useRef(null);
+  // Dragging used to go through React state, which re-rendered this entire
+  // filter-heavy SVG on every pointermove. We now write the transform straight
+  // to the nodes and only fall back to state for the spring release.
+  const bodyRef = useRef(null);
+  const threadRef = useRef(null);
+  const lineRefs = useRef([]);
 
-  // Position state for the draggable elastic spider clock
-  const defaultY = 60;
-  const [pos, setPos] = useState({ x: 0, y: defaultY });
+  // Position refs for the draggable elastic spider clock
+  const pos = initialPos;
   const posRef = useRef({ x: 0, y: defaultY });
   const isDragging = useRef(false);
   const dragStart = useRef({ mouseX: 0, mouseY: 0, startX: 0, startY: defaultY });
   const tweenRef = useRef(null);
+  const frameRef = useRef(0);
+  const pendingPos = useRef(null);
 
-  // Sync ref with state
-  useEffect(() => {
-    posRef.current = pos;
-  }, [pos]);
+  // Paint the current position without going through React.
+  const paintPos = useCallback((x, y) => {
+    if (bodyRef.current) {
+      bodyRef.current.style.transform = `translate(${x}px, ${y}px)`;
+    }
+    if (threadRef.current) {
+      threadRef.current.style.height = `${y + 100}px`;
+    }
+    for (const line of lineRefs.current) {
+      if (!line) continue;
+      line.setAttribute('x2', String(200 + x));
+      line.setAttribute('y2', String(y + 90));
+    }
+  }, []);
+
+  // Coalesce pointer moves to one DOM write per animation frame.
+  const queuePos = useCallback((x, y) => {
+    posRef.current = { x, y };
+    pendingPos.current = { x, y };
+    if (frameRef.current) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = 0;
+      const next = pendingPos.current;
+      if (!next) return;
+      pendingPos.current = null;
+      paintPos(next.x, next.y);
+    });
+  }, [paintPos]);
+
+  useEffect(() => () => {
+    if (frameRef.current) cancelAnimationFrame(frameRef.current);
+  }, []);
 
   // GSAP Clock Animations
   useEffect(() => {
+    const tweens = [];
     const ctx = gsap.context(() => {
       const select = (e) => containerRef.current?.querySelector(e);
 
@@ -108,72 +147,85 @@ function SpiderClock({ onClose, showToast }) {
       setTimeMinHr();
       gsap.set([".gsapWrapper"], { autoAlpha: 1 });
 
-      gsap.to(".cw.t24", 1, {
-        rotation: "-=15",
-        transformOrigin: "50% 50%",
-        ease: "bounce",
-        onComplete: function () {
-          this.invalidate().delay(1).restart(true);
-        },
-      });
+      if (!isLowPower) {
+        tweens.push(
+          gsap.to(".cw.t24", 1, {
+            rotation: "-=15",
+            transformOrigin: "50% 50%",
+            ease: "bounce",
+            onComplete: function () {
+              this.invalidate().delay(1).restart(true);
+            },
+          }),
+          gsap.to(".cw.t20", 1, {
+            rotation: "-=18",
+            transformOrigin: "50% 50%",
+            ease: "bounce",
+            onComplete: function () {
+              this.invalidate().delay(1).restart(true);
+            },
+          }),
+          gsap.to(".ccw.t12", 1, {
+            rotation: "+=30",
+            transformOrigin: "50% 50%",
+            ease: "bounce",
+            onComplete: function () {
+              this.invalidate().delay(1).restart(true);
+            },
+          })
+        );
+      }
 
-      gsap.to(".cw.t20", 1, {
-        rotation: "-=18",
-        transformOrigin: "50% 50%",
-        ease: "bounce",
-        onComplete: function () {
-          this.invalidate().delay(1).restart(true);
-        },
-      });
-
-      gsap.to(".ccw.t12", 1, {
-        rotation: "+=30",
-        transformOrigin: "50% 50%",
-        ease: "bounce",
-        onComplete: function () {
-          this.invalidate().delay(1).restart(true);
-        },
-      });
-
-      gsap.to(min, 0.5, {
-        rotation: getMinRotation,
-        transformOrigin: "50% 50%",
-        ease: "none",
-        onComplete: function () {
-          if (gsap.getProperty(min, "rotation") >= 360) {
-            gsap.set(min, { rotation: 0, transformOrigin: "50% 50%" });
-          }
-          this.invalidate().delay(5).restart(true);
-        },
-      });
-
-      gsap.to(hr, 0.5, {
-        rotation: getHrRotation,
-        transformOrigin: "50% 50%",
-        ease: "none",
-        onComplete: function () {
-          if (gsap.getProperty(hr, "rotation") >= 360) {
-            gsap.set(hr, { rotation: 0, transformOrigin: "50% 50%" });
-          }
-          this.invalidate().delay(5).restart(true);
-        },
-      });
-
-      gsap.to(sec, 0.5, {
-        rotation: geSecRotation,
-        transformOrigin: "50% 50%",
-        ease: "bounce",
-        onComplete: function () {
-          setTimeSec();
-          if (gsap.getProperty(sec, "rotation") >= 360) {
-            gsap.set(sec, { rotation: 0, transformOrigin: "50% 50%" });
-          }
-          this.invalidate().delay(0).restart(true);
-        },
-      });
+      tweens.push(
+        gsap.to(min, 0.5, {
+          rotation: getMinRotation,
+          transformOrigin: "50% 50%",
+          ease: "none",
+          onComplete: function () {
+            if (gsap.getProperty(min, "rotation") >= 360) {
+              gsap.set(min, { rotation: 0, transformOrigin: "50% 50%" });
+            }
+            this.invalidate().delay(5).restart(true);
+          },
+        }),
+        gsap.to(hr, 0.5, {
+          rotation: getHrRotation,
+          transformOrigin: "50% 50%",
+          ease: "none",
+          onComplete: function () {
+            if (gsap.getProperty(hr, "rotation") >= 360) {
+              gsap.set(hr, { rotation: 0, transformOrigin: "50% 50%" });
+            }
+            this.invalidate().delay(5).restart(true);
+          },
+        }),
+        gsap.to(sec, 0.5, {
+          rotation: geSecRotation,
+          transformOrigin: "50% 50%",
+          ease: "bounce",
+          onComplete: function () {
+            setTimeSec();
+            if (gsap.getProperty(sec, "rotation") >= 360) {
+              gsap.set(sec, { rotation: 0, transformOrigin: "50% 50%" });
+            }
+            this.invalidate().delay(0).restart(true);
+          },
+        })
+      );
     }, containerRef);
 
-    return () => ctx.revert();
+    const handleVisibilityChange = () => {
+      for (const t of tweens) {
+        if (document.hidden) t.pause();
+        else t.resume();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      ctx.revert();
+    };
   }, []);
 
   // Elastic Drag & Release Spring Handlers
@@ -209,7 +261,7 @@ function SpiderClock({ onClose, showToast }) {
       const newX = dragStart.current.startX + dx;
       const newY = Math.max(15, dragStart.current.startY + dy);
 
-      setPos({ x: newX, y: newY });
+      queuePos(newX, newY);
     };
 
     const handleTouchMove = (e) => {
@@ -222,7 +274,7 @@ function SpiderClock({ onClose, showToast }) {
       const newX = dragStart.current.startX + dx;
       const newY = Math.max(15, dragStart.current.startY + dy);
 
-      setPos({ x: newX, y: newY });
+      queuePos(newX, newY);
     };
 
     const handleEndDrag = () => {
@@ -237,7 +289,7 @@ function SpiderClock({ onClose, showToast }) {
         duration: 1.6,
         ease: "elastic.out(1.2, 0.35)",
         onUpdate: () => {
-          setPos({ x: animTarget.x, y: animTarget.y });
+          paintPos(animTarget.x, animTarget.y);
         },
       });
 
@@ -257,7 +309,7 @@ function SpiderClock({ onClose, showToast }) {
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleEndDrag);
     };
-  }, [showToast]);
+  }, [paintPos, queuePos, showToast]);
 
   return (
     <div className="spider-clock-container" ref={containerRef}>
@@ -274,8 +326,10 @@ function SpiderClock({ onClose, showToast }) {
           pointerEvents: 'none',
           zIndex: 1,
         }}
+        ref={threadRef}
       >
         <line
+          ref={(el) => { lineRefs.current[0] = el; }}
           x1="200"
           y1="0"
           x2={200 + pos.x}
@@ -286,6 +340,7 @@ function SpiderClock({ onClose, showToast }) {
           opacity="0.85"
         />
         <line
+          ref={(el) => { lineRefs.current[1] = el; }}
           x1="200"
           y1="0"
           x2={200 + pos.x}
@@ -299,6 +354,7 @@ function SpiderClock({ onClose, showToast }) {
       {/* Main Watch Dial */}
       <div
         className="gsapWrapper"
+        ref={bodyRef}
         style={{
           transform: `translate(${pos.x}px, ${pos.y}px)`,
           zIndex: 5,

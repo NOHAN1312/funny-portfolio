@@ -1178,6 +1178,26 @@
   animation-play-state: paused !important;
 }
 
+/* Everything here is an infinite CSS animation; pause the lot while the
+   section is scrolled out of view so the compositor can actually idle. */
+.flower-section.is-paused * {
+  animation-play-state: paused !important;
+}
+
+/* Low-power (phone) profile: skip the full-section mask (it forces the whole
+   subtree through an offscreen render pass) and drop the decorative blurs,
+   which are the most expensive paint work in this component. */
+.flower-section.is-low-power {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.flower-section.is-low-power .night,
+.flower-section.is-low-power .flower__light,
+.flower-section.is-low-power .flower__g-front__line {
+  filter: none;
+}
+
 /* Emoji Flower Bloom Styles */
 .emoji-flower {
   position: absolute;

@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { isLowPower, prefersReducedMotion } from './perf';
 
 export default function Dragon({ opacity = 0.7, size = 1.0 }) {
   const screenRef = useRef(null);
@@ -14,6 +15,9 @@ export default function Dragon({ opacity = 0.7, size = 1.0 }) {
     const screen = screenRef.current;
     if (!screen) return;
 
+    // Frozen cursor-trail decoration: not worth the per-frame cost.
+    if (prefersReducedMotion) return;
+
     let width = window.innerWidth;
     let height = window.innerHeight;
     let rad = 0;
@@ -22,7 +26,9 @@ export default function Dragon({ opacity = 0.7, size = 1.0 }) {
     const pointer = { x: width / 2, y: height / 2 };
     const radm = Math.min(width / 2, height / 2) - 20;
 
-    const N = 40;
+    // Writing `transform` on ~39 SVG nodes every single frame costs a style
+    // recalc per node. A shorter tail looks identical at phone sizes.
+    const N = isLowPower ? 18 : 40;
     const elems = [];
     for (let i = 0; i < N; i++) {
       elems[i] = { use: null, x: width / 2, y: height / 2 };
@@ -56,9 +62,17 @@ export default function Dragon({ opacity = 0.7, size = 1.0 }) {
     }
 
     let animFrameId;
+    let lastFrame = 0;
+    // Cap the update rate on phones: the trail is a decorative blur anyway,
+    // so 30fps looks the same while halving the per-frame SVG writes.
+    const frameBudget = isLowPower ? 1000 / 30 : 0;
 
-    const run = () => {
+    const run = (now = 0) => {
       animFrameId = requestAnimationFrame(run);
+      if (frameBudget && now - lastFrame < frameBudget) return;
+      lastFrame = now;
+      if (document.hidden) return;
+
       const e0 = elems[0];
       const ax = (Math.cos(3 * frm) * rad * width) / height;
       const ay = (Math.sin(4 * frm) * rad * height) / width;

@@ -8,6 +8,27 @@ function AuthModal({ isOpen, onClose }) {
   const [showError, setShowError] = useState(false);
   const [selectedRandomEmail, setSelectedRandomEmail] = useState('');
   const [step, setStep] = useState('auth'); // 'auth' | 'verification'
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevIsRightActive, setPrevIsRightActive] = useState(isRightActive);
+
+  // Reset errors and fields when modal state changes
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
+    if (!isOpen) {
+      setSignupEmail('');
+      setSignupPassword('');
+      setShowError(false);
+      setSelectedRandomEmail('');
+      setStep('auth');
+    }
+  }
+
+  // Reset error when switching between login and signup
+  if (isRightActive !== prevIsRightActive) {
+    setPrevIsRightActive(isRightActive);
+    setShowError(false);
+    setSelectedRandomEmail('');
+  }
 
   const randomEmails = [
     'r15@gmail.com',
@@ -26,23 +47,6 @@ function AuthModal({ isOpen, onClose }) {
     'semicolon_hunter@nightshift.in',
     'coffee_dependent_zombie@sleepdeprived.com'
   ];
-
-  // Reset errors and fields when modal state changes
-  useEffect(() => {
-    if (!isOpen) {
-      setSignupEmail('');
-      setSignupPassword('');
-      setShowError(false);
-      setSelectedRandomEmail('');
-      setStep('auth');
-    }
-  }, [isOpen]);
-
-  // Reset error when switching between login and signup
-  useEffect(() => {
-    setShowError(false);
-    setSelectedRandomEmail('');
-  }, [isRightActive]);
 
   const handleSignupSubmit = (e) => {
     e.preventDefault();

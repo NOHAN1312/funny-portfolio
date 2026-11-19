@@ -7,9 +7,33 @@ import AuthModal from './AuthModal';
 import DotNavigation from './DotNavigation';
 import SpiderClock from './SpiderClock';
 
+/**
+ * Live copy-paste counter.
+ *
+ * This used to live in <App> as `copyCount` state on a 3s interval, which
+ * re-rendered the entire page (hero, all the WebGL canvases, the whole SVG
+ * clock) every 3 seconds. Keeping the ticking state inside its own leaf
+ * component means only this one <span> updates.
+ */
+function LiveCopyCounter({ start = 45679 }) {
+  const [count, setCount] = useState(start);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCount(prev => prev + Math.floor(Math.random() * 5) + 1);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span className="font-bold text-[#D90429] bg-[#FFE5EC] px-2 py-0.5 border border-[#FFA5BA]">
+      {count.toLocaleString()} বার
+    </span>
+  );
+}
+
 function App() {
   const [showAllVictims, setShowAllVictims] = useState(false);
-  const [copyCount, setCopyCount] = useState(45679);
   const [isShaking, setIsShaking] = useState(false);
   const [agreedToBugs, setAgreedToBugs] = useState(false);
   const [dragonOpacity, setDragonOpacity] = useState(0.6);
@@ -18,7 +42,6 @@ function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showSpiderClock, setShowSpiderClock] = useState(true);
-  const [timeString, setTimeString] = useState('');
   const [toastMessage, setToastMessage] = useState('');
 
   // Interactive Coffee & Bug Generator Modal States
@@ -79,9 +102,7 @@ function App() {
 
   // Project Cards Interactive State
   const [minimizedProjects, setMinimizedProjects] = useState([]);
-  const [maximizedProject, setMaximizedProject] = useState(null);
   const [closedProjects, setClosedProjects] = useState([]);
-  const [runningProject, setRunningProject] = useState(null);
   const [activeLiveProject, setActiveLiveProject] = useState(null);
   const [isLiveProjectMaximized, setIsLiveProjectMaximized] = useState(false);
   const [iframeKey, setIframeKey] = useState(0);
@@ -271,25 +292,6 @@ function App() {
       document.getElementById('victims')?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
   };
-
-  // Live Clock for Win98 Tray
-  useEffect(() => {
-    const updateClock = () => {
-      const now = new Date();
-      setTimeString(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-    };
-    updateClock();
-    const timer = setInterval(updateClock, 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Fake Counter Effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCopyCount(prev => prev + Math.floor(Math.random() * 5) + 1);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Scroll Reveal Observer
   useEffect(() => {
@@ -648,7 +650,7 @@ function App() {
 
         {/* HERO SECTION (WIN98 MAIN WINDOW ON DESK) */}
         {!windows.hero.closed && (
-          <section id="hero" className={`relative reveal reveal-up transition-all duration-300 ${windows.hero.max ? 'max-w-none w-full' : ''}`}>
+          <section id="hero" className={`relative reveal reveal-up transition-[max-width,width] duration-300 ${windows.hero.max ? 'max-w-none w-full' : ''}`}>
             
             {/* Notebook Sticky Note on Top Left of Window */}
             {!windows.hero.min && (
@@ -772,9 +774,7 @@ function App() {
                           <div className="win98-inset px-4 py-2 inline-flex items-center gap-3 text-xs font-mono">
                             <span className="text-base">📋</span>
                             <span>লাইভ কপি-পেস্ট কাউন্টার:</span>
-                            <span className="font-bold text-[#D90429] bg-[#FFE5EC] px-2 py-0.5 border border-[#FFA5BA]">
-                              {copyCount.toLocaleString()} বার
-                            </span>
+                            <LiveCopyCounter />
                           </div>
                         </div>
 
@@ -798,6 +798,11 @@ function App() {
                             <img 
                               src="./hero-image.jpg" 
                               alt="Hero representation" 
+                              width={1024}
+                              height={1024}
+                              loading="eager"
+                              fetchPriority="high"
+                              decoding="async"
                               className="w-full aspect-square object-cover"
                             />
                           </div>
@@ -831,7 +836,7 @@ function App() {
 
         {/* SKILLS AS WIN98 SETUP PROGRESS */}
         {!windows.skills.closed && (
-          <section id="skills" className={`reveal reveal-up transition-all duration-300 ${windows.skills.max ? 'max-w-none w-full' : ''}`}>
+          <section id="skills" className={`cv-section reveal reveal-up transition-[max-width,width] duration-300 ${windows.skills.max ? 'max-w-none w-full' : ''}`}>
             <div className="win98-window">
               <div className="win98-titlebar cursor-pointer" onDoubleClick={() => handleWinControl('skills', 'max')}>
                 <div className="flex items-center gap-2">
@@ -884,7 +889,7 @@ function App() {
         )}
 
         {/* PROJECTS SECTION (WIN98 EXPLORER WITH TAPED NOTES) */}
-        <section id="projects" className="space-y-6 reveal reveal-up">
+        <section id="projects" className="cv-section space-y-6 reveal reveal-up">
           
           {/* Section Header Window */}
           <div className="win98-box p-4 bg-[#C0C0C0] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
@@ -916,7 +921,7 @@ function App() {
             {projects.filter(p => !closedProjects.includes(p.id)).map((proj) => {
               const isMin = minimizedProjects.includes(proj.id);
               return (
-                <div key={proj.id} className="win98-window relative group transition-all duration-300">
+                <div key={proj.id} className="win98-window relative group">
                   {/* Window Titlebar */}
                   <div className="win98-titlebar cursor-pointer" onDoubleClick={() => handleProjectControl(proj.id, proj.name, 'max')}>
                     <div className="flex items-center gap-2 text-xs">
@@ -971,6 +976,10 @@ function App() {
                         <img 
                           src={proj.image} 
                           alt={proj.name}
+                          loading="lazy"
+                          decoding="async"
+                          width={640}
+                          height={400}
                           className="w-full aspect-[16/10] object-cover hover:scale-105 transition-transform duration-300"
                         />
                       </div>
@@ -1027,7 +1036,7 @@ function App() {
 
         {/* PROCESS SECTION (3-STEP SETUP WIZARD) */}
         {!windows.process.closed && (
-          <section id="process" className={`space-y-6 reveal reveal-up transition-all duration-300 ${windows.process.max ? 'max-w-none w-full' : ''}`}>
+          <section id="process" className={`cv-section space-y-6 reveal reveal-up transition-[max-width,width] duration-300 ${windows.process.max ? 'max-w-none w-full' : ''}`}>
             <div className="win98-window">
               <div className="win98-titlebar cursor-pointer" onDoubleClick={() => handleWinControl('process', 'max')}>
                 <div className="flex items-center gap-2">
@@ -1118,7 +1127,7 @@ function App() {
         )}
 
         {/* VICTIMS SECTION (WIN98 ERROR & WARNING DIALOG BOXES) */}
-        <section id="victims" className="space-y-6 reveal reveal-up">
+        <section id="victims" className="cv-section space-y-6 reveal reveal-up">
           
           <div className="win98-box p-4 bg-[#C0C0C0] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
@@ -1149,7 +1158,7 @@ function App() {
             {activeVictims.slice(0, showAllVictims ? activeVictims.length : 3).map((victim) => {
               const isPacified = pacifiedVictims.includes(victim.id);
               return (
-                <div key={victim.id} className="win98-window flex flex-col justify-between relative transition-all duration-300">
+                <div key={victim.id} className="win98-window flex flex-col justify-between relative">
                   
                   {/* Pacified Stamp Banner */}
                   {isPacified && (
@@ -1185,6 +1194,10 @@ function App() {
                       <img 
                         src={victim.avatar} 
                         alt={victim.name} 
+                        loading="lazy"
+                        decoding="async"
+                        width={36}
+                        height={36}
                         className="w-9 h-9 win98-inset object-cover bg-white"
                       />
                       <div className="text-xs font-mono">
@@ -1241,7 +1254,7 @@ function App() {
 
         {/* CONTACT SECTION (SUBMIT TICKET DIALOG) */}
         {!windows.contact.closed && (
-          <section id="contact" className={`reveal reveal-up transition-all duration-300 ${windows.contact.max ? 'max-w-none w-full' : ''}`}>
+          <section id="contact" className={`cv-section reveal reveal-up transition-[max-width,width] duration-300 ${windows.contact.max ? 'max-w-none w-full' : ''}`}>
             <div className="win98-window max-w-2xl mx-auto">
               <div className="win98-titlebar cursor-pointer" onDoubleClick={() => handleWinControl('contact', 'max')}>
                 <div className="flex items-center gap-2">
@@ -1377,7 +1390,7 @@ function App() {
 
       {/* GLOBAL DRAGON SETTINGS MODAL */}
       {showDragonSettings && (
-        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs no-backdrop-blur flex items-center justify-center p-4">
           <div className="win98-window max-w-sm w-full p-5 text-black shadow-2xl animate-popWin">
             <div className="win98-titlebar mb-3 text-xs">
               <span>🐉 DRAGON.DLL SETTINGS</span>
@@ -1450,7 +1463,7 @@ function App() {
 
       {/* COFFEE REFILL MODAL (COFFEE.EXE) */}
       {isCoffeeModalOpen && (
-        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs no-backdrop-blur flex items-center justify-center p-4">
           <div className="win98-window max-w-md w-full p-6 text-black shadow-2xl animate-popWin">
             <div className="win98-titlebar mb-4 text-xs">
               <div className="flex items-center gap-2">
@@ -1526,7 +1539,7 @@ function App() {
 
       {/* RANDOM BUG GENERATOR MODAL (BUG_GENERATOR.EXE) */}
       {isBugModalOpen && (
-        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs no-backdrop-blur flex items-center justify-center p-4">
           <div className="win98-window max-w-lg w-full p-6 text-black shadow-2xl animate-popWin">
             <div className="win98-titlebar mb-4 text-xs bg-gradient-to-r from-[#800000] to-[#C00000]">
               <div className="flex items-center gap-2">
@@ -1596,7 +1609,7 @@ function App() {
 
       {/* LIVE WIN98 INTERACTIVE PROJECT VIEWER MODAL (ROOT LEVEL) */}
       {activeLiveProject && (
-        <div className="fixed inset-0 z-[9999999] bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden">
+        <div className="fixed inset-0 z-[9999999] bg-black/40 backdrop-blur-[2px] no-backdrop-blur flex items-center justify-center p-3 sm:p-5 md:p-6 overflow-hidden">
           <div 
             style={isLiveProjectMaximized ? {} : (typeof window !== 'undefined' && window.innerWidth >= 768 ? { transform: `translate3d(${liveWinPos.x}px, ${liveWinPos.y}px, 0)` } : {})}
             className={`win98-window w-full max-w-[96vw] sm:max-w-2xl md:max-w-5xl h-[82vh] max-h-[82vh] md:h-[86vh] md:max-h-[86vh] ${isDraggingLiveWin ? 'select-none transition-none' : 'transition-transform duration-75'} flex flex-col shadow-2xl ${isLiveProjectMaximized ? 'h-full max-h-none max-w-none' : ''}`}
